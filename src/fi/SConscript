@@ -1,0 +1,8 @@
+
+Import('*')
+
+
+
+Source('fi_sys.cc')
+
+DebugFlag('FaultInjection', "Messages for Fault Injection Activity")
