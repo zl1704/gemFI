@@ -1,4 +1,4 @@
-#include "fi_sys.hh"
+#include "fi/fi_sys.hh"
 
 
 FISystem::FISystem(AtomicSimpleCPU* _cpu):cpu(_cpu){
@@ -15,7 +15,7 @@ FISystem* FISystem::create(AtomicSimpleCPU* cpu){
 }
 
 
-void process(){
+void FISystem::process(){
     //判断当前环境是否进行故障注入
 
     //进行故障注入类型

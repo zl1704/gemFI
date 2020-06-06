@@ -1,3 +1,5 @@
+#ifndef __FI_HH__
+#define __FI_HH__ 
 
 class FaultInject{
 
@@ -15,3 +17,5 @@ class PCFaultInject:public FaultInject{
 
 
 };
+
+#endif

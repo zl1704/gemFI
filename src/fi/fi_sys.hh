@@ -1,5 +1,9 @@
-#include "fi.hh"
+#ifndef __FI_SYS_HH_
+#define __FI_SYS_HH_
+
 #include "cpu/simple/atomic.hh"
+#include "fi/fi.hh"
+
 
 class FISystem{
 public:
@@ -19,3 +23,5 @@ private:
     AtomicSimpleCPU* cpu;
     
 };
+
+#endif

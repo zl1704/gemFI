@@ -49,6 +49,7 @@
 #include "params/AtomicSimpleCPU.hh"
 #include "sim/probe/probe.hh"
 #include "fi/fi_sys.hh"
+class FISystem;
 
 class AtomicSimpleCPU : public BaseSimpleCPU
 {
