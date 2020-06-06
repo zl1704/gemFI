@@ -1,0 +1,185 @@
+gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jun  6 2020 21:03:11
+gem5 started Jun  6 2020 21:04:26
+gem5 executing on zlpc, pid 23053
+command line: build/ARM/gem5.opt configs/example/se.py -c tests/test-progs/hello/src/hello
+
+{'__name__': '__m5_main__', '__file__': 'configs/example/se.py'}
+Global frequency set at 1000000000000 ticks per second
+process construct ...
+--- BEGIN LIBC BACKTRACE ---
+build/ARM/gem5.opt(_Z15print_backtracev+0x28)[0x23098f8]
+build/ARM/gem5.opt(_ZN7ProcessC1EP13ProcessParamsP18EmulationPageTableP10ObjectFile+0x79f)[0x234abdf]
+build/ARM/gem5.opt(_ZN10ArmProcessC2EP13ProcessParamsP10ObjectFileNS2_4ArchE+0x13f)[0x176910f]
+build/ARM/gem5.opt(_ZN12ArmProcess32C2EP13ProcessParamsP10ObjectFileNS2_4ArchE+0xe)[0x17692ee]
+build/ARM/gem5.opt(_ZN17ArmLinuxProcess32C2EP13ProcessParamsP10ObjectFileNS2_4ArchE+0x25)[0x17424a5]
+build/ARM/gem5.opt[0x1742847]
+build/ARM/gem5.opt(_ZN13ProcessParams6createEv+0x90)[0x2349ff0]
+build/ARM/gem5.opt[0x10f256c]
+build/ARM/gem5.opt[0xd2a0d9]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6f55)[0x7f2e491daeb5]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCode+0x19)[0x7f2e491d3de9]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x613b)[0x7f2e491da09b]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f2e491daf5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f2e4931211c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCode+0x19)[0x7f2e491d3de9]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyRun_StringFlags+0x76)[0x7f2e4924e236]
+--- END LIBC BACKTRACE ---
+**** REAL SIMULATION ****
+Hello world!
+The result is 11
+FISystem::close
+=======PCInfo::dump=========
+fun name:.udivsi3_skip_div0_test, start: 330536 , end: 330536
+fun name:_Exit, start: 132810 , end: 132816
+fun name:_IO_adjust_column, start: 99180 , end: 99180
+fun name:_IO_cleanup, start: 99656 , end: 99898
+fun name:_IO_default_setbuf, start: 98488 , end: 98590
+fun name:_IO_default_uflow, start: 98256 , end: 98256
+fun name:_IO_default_xsgetn, start: 98484 , end: 98484
+fun name:_IO_default_xsputn, start: 98260 , end: 98364
+fun name:_IO_do_write, start: 94778 , end: 94798
+fun name:_IO_doallocbuf, start: 98134 , end: 98168
+fun name:_IO_file_attach, start: 94776 , end: 94776
+fun name:_IO_file_close, start: 90588 , end: 90588
+fun name:_IO_file_doallocate, start: 221350 , end: 221454
+fun name:_IO_file_finish, start: 95908 , end: 95908
+fun name:_IO_file_overflow, start: 95910 , end: 96216
+fun name:_IO_file_read, start: 94060 , end: 94060
+fun name:_IO_file_setbuf, start: 90590 , end: 90614
+fun name:_IO_file_setbuf_mmap, start: 90692 , end: 90692
+fun name:_IO_file_stat, start: 93146 , end: 93156
+fun name:_IO_file_sync, start: 96218 , end: 96282
+fun name:_IO_file_write, start: 93158 , end: 93270
+fun name:_IO_file_xsgetn_maybe_mmap, start: 93144 , end: 93144
+fun name:_IO_file_xsputn, start: 94064 , end: 94332
+fun name:_IO_flush_all_lockp, start: 99184 , end: 99652
+fun name:_IO_fopen, start: 85312 , end: 85312
+fun name:_IO_free_backup_area, start: 97776 , end: 97776
+fun name:_IO_printf, start: 84162 , end: 84198
+fun name:_IO_setb, start: 98074 , end: 98132
+fun name:_IO_str_count, start: 102104 , end: 102104
+fun name:___fini_from_thumb, start: 337132 , end: 337132
+fun name:__aeabi_uidiv, start: 330538 , end: 331140
+fun name:__aeabi_uidivmod, start: 331142 , end: 331164
+fun name:__correctly_grouped_prefixmb, start: 84160 , end: 84160
+fun name:__ctype_init, start: 175398 , end: 175452
+fun name:__ctype_tolower_loc, start: 175396 , end: 175396
+fun name:__cxa_atexit, start: 82916 , end: 82920
+fun name:__default_morecore, start: 122590 , end: 122602
+fun name:__dlerror, start: 279872 , end: 279872
+fun name:__do_global_dtors_aux, start: 66602 , end: 66648
+fun name:__fxstat64, start: 134626 , end: 134644
+fun name:__gcc_personality_v0, start: 337128 , end: 337128
+fun name:__get_child_max, start: 134624 , end: 134624
+fun name:__getclktck, start: 139780 , end: 139780
+fun name:__getrlimit, start: 136772 , end: 136772
+fun name:__hash_string, start: 80832 , end: 80832
+fun name:__init_misc, start: 139782 , end: 139816
+fun name:__internal_atexit, start: 82858 , end: 82912
+fun name:__libc_check_standard_fds, start: 67632 , end: 67632
+fun name:__libc_csu_fini, start: 68266 , end: 68320
+fun name:__libc_csu_init, start: 68148 , end: 68264
+fun name:__libc_disable_asynccancel, start: 140340 , end: 140340
+fun name:__libc_do_syscall, start: 68322 , end: 68326
+fun name:__libc_init_first, start: 144478 , end: 144600
+fun name:__libc_init_secure, start: 144248 , end: 144308
+fun name:__libc_malloc, start: 115664 , end: 115904
+fun name:__libc_setup_tls, start: 67636 , end: 68024
+fun name:__libc_start_main, start: 66804 , end: 67324
+fun name:__linkin_atfork, start: 140342 , end: 140392
+fun name:__lseek, start: 238272 , end: 238272
+fun name:__malloc_check_init, start: 115660 , end: 115660
+fun name:__memcpy_neon, start: 129408 , end: 129520
+fun name:__new_exitfn, start: 82578 , end: 82856
+fun name:__overflow, start: 97778 , end: 97792
+fun name:__parse_one_specwc, start: 221348 , end: 221348
+fun name:__pthread_initialize_minimal, start: 68122 , end: 68124
+fun name:__rel_iplt_end, start: 65888 , end: 65912
+fun name:__run_exit_handlers, start: 82388 , end: 82560
+fun name:__setfpucw, start: 175504 , end: 175504
+fun name:__sigjmp_save, start: 175590 , end: 175620
+fun name:__sigsetjmp, start: 175508 , end: 175588
+fun name:__strtol_l, start: 178780 , end: 178780
+fun name:__syscall_error_1, start: 144628 , end: 144646
+fun name:__tls_get_addr, start: 68144 , end: 68144
+fun name:__uflow, start: 98072 , end: 98072
+fun name:__wcsmbs_named_conv, start: 132808 , end: 132808
+fun name:__write_nocancel, start: 134976 , end: 134976
+fun name:_dl_add_to_slotinfo, start: 264876 , end: 264876
+fun name:_dl_addr_inside_object, start: 144244 , end: 144244
+fun name:_dl_aux_init, start: 141336 , end: 141972
+fun name:_dl_debug_initialize, start: 141244 , end: 141332
+fun name:_dl_debug_state, start: 141240 , end: 141240
+fun name:_dl_discover_osversion, start: 144310 , end: 144476
+fun name:_dl_get_origin, start: 264878 , end: 265078
+fun name:_dl_important_hwcaps, start: 260336 , end: 261794
+fun name:_dl_init_paths, start: 247084 , end: 247374
+fun name:_dl_non_dynamic_init, start: 141976 , end: 143476
+fun name:_dl_relocate_object, start: 260332 , end: 260332
+fun name:_dl_start, start: 144624 , end: 144624
+fun name:_dl_tls_setup, start: 68120 , end: 68120
+fun name:_fini, start: 339488 , end: 339492
+fun name:_int_malloc, start: 110092 , end: 111948
+fun name:_itoa_word, start: 178782 , end: 178918
+fun name:_setjmp, start: 80836 , end: 80836
+fun name:_start, start: 66440 , end: 66464
+fun name:access, start: 238274 , end: 238288
+fun name:brk, start: 238590 , end: 238622
+fun name:cache_rpath.part.10, start: 247080 , end: 247080
+fun name:call_weak_fn, start: 66484 , end: 66520
+fun name:check_free.isra.0, start: 279904 , end: 279904
+fun name:deregister_tm_clones, start: 66522 , end: 66556
+fun name:exit, start: 82564 , end: 82576
+fun name:fdopendir, start: 237952 , end: 237952
+fun name:fini, start: 66424 , end: 66436
+fun name:frame_dummy, start: 66650 , end: 66716
+fun name:free_check, start: 108508 , end: 108508
+fun name:fun, start: 66718 , end: 66744
+fun name:getenv, start: 82236 , end: 82384
+fun name:main, start: 66746 , end: 66800
+fun name:malloc_consolidate, start: 104720 , end: 105182
+fun name:malloc_hook_ini, start: 119424 , end: 119470
+fun name:malloc_info, start: 122588 , end: 122588
+fun name:malloc_init_state, start: 102108 , end: 102180
+fun name:mallopt, start: 118672 , end: 118672
+fun name:memcpy, start: 128000 , end: 128016
+fun name:munmap_chunk, start: 104716 , end: 104716
+fun name:new_do_write, start: 90694 , end: 90828
+fun name:oom, start: 66420 , end: 66420
+fun name:printf_positional, start: 186500 , end: 186500
+fun name:ptmalloc_init.part.9, start: 118676 , end: 119420
+fun name:puts, start: 85316 , end: 85560
+fun name:qsort, start: 82232 , end: 82232
+fun name:rawmemchr, start: 129240 , end: 129240
+fun name:register_tm_clones, start: 66560 , end: 66600
+fun name:rindex, start: 226562 , end: 226720
+fun name:sbrk, start: 136774 , end: 136872
+fun name:strchrnul, start: 129242 , end: 129404
+fun name:strdup, start: 124160 , end: 124160
+fun name:strlen, start: 124164 , end: 124378
+fun name:strnlen, start: 226560 , end: 226560
+fun name:sysmalloc, start: 108512 , end: 110088
+fun name:tcgetattr, start: 238588 , end: 238588
+fun name:uname, start: 237954 , end: 237966
+fun name:vfprintf, start: 186502 , end: 192570
+fun name:write, start: 134980 , end: 135006
+Exiting @ tick 4280000 because exiting with last active thread context

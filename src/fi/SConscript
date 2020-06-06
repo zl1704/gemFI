@@ -5,4 +5,4 @@ Import('*')
 
 Source('fi_sys.cc')
 
-DebugFlag('FaultInjection', "Messages for Fault Injection Activity")
+DebugFlag('FI', "Messages for Fault Injection Activity")

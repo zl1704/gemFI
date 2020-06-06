@@ -105,6 +105,7 @@ AtomicSimpleCPU::~AtomicSimpleCPU()
     if (tickEvent.scheduled()) {
         deschedule(tickEvent);
     }
+    
 }
 
 DrainState
@@ -230,7 +231,7 @@ void
 AtomicSimpleCPU::activateContext(ThreadID thread_num)
 {
     DPRINTF(SimpleCPU, "ActivateContext %d\n", thread_num);
-
+   
     assert(thread_num < numThreads);
 
     threadInfo[thread_num]->notIdleFraction = 1;
@@ -256,7 +257,7 @@ void
 AtomicSimpleCPU::suspendContext(ThreadID thread_num)
 {
     DPRINTF(SimpleCPU, "SuspendContext %d\n", thread_num);
-
+    
     assert(thread_num < numThreads);
     activeThreads.remove(thread_num);
 
@@ -405,7 +406,7 @@ AtomicSimpleCPU::readMem(Addr addr, uint8_t * data, unsigned size,
             fault = thread->dtb->translateAtomic(req, thread->getTC(),
                                                  BaseTLB::Read);
         }
-
+        
         // Now do the access.
         if (predicate && fault == NoFault &&
             !req->getFlags().isSet(Request::NO_ACCESS)) {
@@ -642,7 +643,7 @@ AtomicSimpleCPU::tick()
     swapActiveThread();
     
     //FI Progress
-    fiSystem->process();
+    fiSystem->startTick();
     
 
     // Set memroy request ids to current thread
@@ -678,7 +679,8 @@ AtomicSimpleCPU::tick()
         Fault fault = NoFault;
 
         TheISA::PCState pcState = thread->pcState();
-
+        // string pc_str = csprintf("Pc Addr:     %d\n",pcState.instAddr());
+        // DPRINTF(SimpleCPU,pc_str.c_str());
         bool needToFetch = !isRomMicroPC(pcState.microPC()) &&
                            !curMacroStaticInst;
         if (needToFetch) {
@@ -715,7 +717,7 @@ AtomicSimpleCPU::tick()
             }
             
             preExecute();//trace instruction
-            
+            fiSystem->process();
             
             Tick stall_ticks = 0;
             if (curStaticInst) {
@@ -779,6 +781,11 @@ AtomicSimpleCPU::tick()
     if (_status != Idle)
         reschedule(tickEvent, curTick() + latency, true);
     
+}
+
+void AtomicSimpleCPU::haltContext(ThreadID thread_num){
+    BaseSimpleCPU::haltContext(thread_num);
+    fiSystem->close();
 }
 
 void

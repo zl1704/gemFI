@@ -54,6 +54,7 @@ class FISystem;
 class AtomicSimpleCPU : public BaseSimpleCPU
 {
   friend class PCFaultInject;
+  friend class FISystem;
   public:
 
     AtomicSimpleCPU(AtomicSimpleCPUParams *params);
@@ -108,7 +109,7 @@ class AtomicSimpleCPU : public BaseSimpleCPU
     bool tryCompleteDrain();
 
     virtual Tick sendPacket(MasterPort &port, const PacketPtr &pkt);
-
+    void haltContext(ThreadID thread_num) override;
     /**
      * An AtomicCPUPort overrides the default behaviour of the
      * recvAtomicSnoop and ignores the packet instead of panicking. It
