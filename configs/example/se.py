@@ -127,7 +127,6 @@ if '--ruby' in sys.argv:
     Ruby.define_options(parser)
 
 (options, args) = parser.parse_args()
-
 if args:
     print("Error: script doesn't take any positional arguments")
     sys.exit(1)
@@ -171,7 +170,6 @@ CPUClass.numThreads = numThreads
 # Check -- do not allow SMT with multiple CPUs
 if options.smt and options.num_cpus > 1:
     fatal("You cannot use SMT with multiple CPUs!")
-
 np = options.num_cpus
 system = System(cpu = [CPUClass(cpu_id=i) for i in range(np)],
                 mem_mode = test_mem_mode,
@@ -206,6 +204,7 @@ if options.elastic_trace_en:
 # frequency.
 for cpu in system.cpu:
     cpu.clk_domain = system.cpu_clk_domain
+    # cpu.fi_config = Param.String("options.fi_config","fi config file")
 
 if ObjectList.is_kvm_cpu(CPUClass) or ObjectList.is_kvm_cpu(FutureClass):
     if buildEnv['TARGET_ISA'] == 'x86':

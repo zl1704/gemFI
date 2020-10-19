@@ -63,7 +63,7 @@ SymbolTable::insert(Addr address, string symbol)
     // There can be multiple symbols for the same address, so always
     // update the addrTable multimap when we see a new symbol name.
     addrTable.insert(make_pair(address, symbol));
-
+    
     return true;
 }
 
@@ -99,7 +99,7 @@ SymbolTable::load(const string &filename)
         Addr addr;
         if (!to_number(address, addr))
             return false;
-
+        
         if (!insert(addr, symbol))
             return false;
     }

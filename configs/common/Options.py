@@ -361,10 +361,14 @@ def addCommonOptions(parser):
     parser.add_option("--arm-iset", default="arm", type="choice",
                       choices=["arm", "thumb", "aarch64"],
                       help="ARM instruction set.")
-
+    
 
 def addSEOptions(parser):
     # Benchmark options
+    # fi option
+    parser.add_option("--fi-config", default="configs/fi/fi.ini", metavar='FILE',
+                       help="FI config file")
+                       
     parser.add_option("-c", "--cmd", default="",
                       help="The binary to run in syscall emulation mode.")
     parser.add_option("-o", "--options", default="",

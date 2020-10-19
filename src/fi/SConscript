@@ -1,8 +1,22 @@
 
 Import('*')
-
-
-
+LIBS = env['LIBS']
+LIBS +=['dwarf']
+env['LIBS'] = LIBS
 Source('fi_sys.cc')
-
-DebugFlag('FI', "Messages for Fault Injection Activity")
+Source('fi.cc')
+Source('compile_info.cc')
+Source('debug_info.cc')
+Source('util.cc')
+Source('ini_reader.cc')
+DebugFlag('REGFI')
+DebugFlag('MEMFI')
+DebugFlag('MPUFI')
+DebugFlag('PFUFI')
+DebugFlag('CACHEFI')
+DebugFlag('VARFI')
+DebugFlag('DPUFI')
+DebugFlag('CUFI')
+DebugFlag('FISYS')
+DebugFlag('FI')
+CompoundFlag('DFI', [ 'REGFI', 'MEMFI','VARFI','DPUFI','CUFI','FISYS'])

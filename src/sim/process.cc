@@ -161,8 +161,8 @@ Process::Process(ProcessParams *params, EmulationPageTable *pTable,
     sigchld = new bool();
 
     image = objFile->buildImage();
-    cprintf("process construct ...\n");
-    print_backtrace();
+
+    
     if (!debugSymbolTable) {
         debugSymbolTable = new SymbolTable();
         if (!objFile->loadGlobalSymbols(debugSymbolTable) ||

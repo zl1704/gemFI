@@ -241,6 +241,7 @@ class AtomicSimpleCPU : public BaseSimpleCPU
      * debugging).
      */
     void printAddr(Addr a);
+
 };
 
 #endif // __CPU_SIMPLE_ATOMIC_HH__

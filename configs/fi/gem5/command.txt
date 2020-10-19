@@ -1,0 +1,15 @@
+inquireAll
+insert 51 100 100
+inquireAll
+insert 50 100 100
+inquireAll
+delete 48
+inquireAll
+delete 2
+inquireAll
+inquire 48
+inquire 50
+inquire 0
+inquireAll
+delete 50
+exit

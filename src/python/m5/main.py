@@ -73,7 +73,7 @@ def parse_options():
                            description=brief_copyright)
     option = options.add_option
     group = options.set_group
-
+    
     listener_modes = ( "on", "off", "auto" )
 
     # Help options
@@ -433,7 +433,7 @@ def main(*args):
     filecode = compile(filedata, filename, 'exec')
     scope = { '__file__' : filename,
               '__name__' : '__m5_main__' }
-    print(scope)
+    
     # if pdb was requested, execfile the thing under pdb, otherwise,
     # just do the execfile normally
     if options.pdb:
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     from pprint import pprint
 
     options, arguments = parse_options()
-
+    
     print('opts:')
     pprint(options, indent=4)
     print()

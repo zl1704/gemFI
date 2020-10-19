@@ -340,6 +340,7 @@ else:
 np = options.num_cpus
 
 test_sys = build_test_system(np)
+
 if len(bm) == 2:
     drive_sys = build_drive_system(np)
     root = makeDualRoot(True, test_sys, drive_sys, options.etherdump)

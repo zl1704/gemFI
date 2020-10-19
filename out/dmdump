@@ -1,0 +1,88 @@
+gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Aug 24 2020 14:45:33
+gem5 started Aug 25 2020 21:34:52
+gem5 executing on zlpc, pid 11026
+command line: build/ARM/gem5.opt --debug-flags=FI,Exec configs/example/se.py -c configs/fi/tt
+
+Global frequency set at 1000000000000 ticks per second
+section name index: .shstrtab
+get debug info ...
+	section name:
+	section name:.note.ABI-tag
+	section name:.rel.dyn
+	section name:.init
+	section name:.iplt
+	section name:.text
+	section name:__libc_freeres_fn
+	section name:__libc_thread_freeres_fn
+	section name:.fini
+	section name:.rodata
+	section name:__libc_subfreeres
+	section name:__libc_atexit
+	section name:__libc_thread_subfreeres
+	section name:.ARM.extab
+	section name:.ARM.exidx
+	section name:.eh_frame
+	section name:.tdata
+	section name:.tbss
+	section name:.init_array
+	section name:.fini_array
+	section name:.jcr
+	section name:.data.rel.ro
+	section name:.got
+	section name:.data
+	section name:.bss
+	section name:__libc_freeres_ptrs
+	section name:.comment
+	section name:.ARM.attributes
+	section name:.debug_aranges
+	section name:.debug_info
+	section name:.debug_abbrev
+TagEntry [code = 1 , tag = 0x11 , has_children = 0]
+	[0x0]: AttrEntry[ NAME = 0x10 (DW_AT_stmt_list) , FORM = 0x6 (DW_AT_stmt_list) ] 
+	[0x0]: AttrEntry[ NAME = 0x11 (DW_AT_low_pc) , FORM = 0x1 (DW_AT_low_pc) ] 
+	[0x0]: AttrEntry[ NAME = 0x12 (DW_AT_high_pc) , FORM = 0x1 (DW_AT_high_pc) ] 
+	[0x0]: AttrEntry[ NAME = 0x3 (DW_AT_name) , FORM = 0x8 (DW_AT_name) ] 
+	[0x0]: AttrEntry[ NAME = 0x1b (DW_AT_comp_dir) , FORM = 0x8 (DW_AT_comp_dir) ] 
+	[0x0]: AttrEntry[ NAME = 0x25 (DW_AT_producer) , FORM = 0x8 (DW_AT_producer) ] 
+	[0x0]: AttrEntry[ NAME = 0x13 (DW_AT_language) , FORM = 0x5 (DW_AT_language) ] 
+	section name:.debug_line
+ ====== process Debug Line ========
+	Extended Opcode 2 :  set Addr = 0x106d8 
+	Line inc 0: from 1 to 79
+	Copy...
+	Special Code : 47 : Addr Inc (4) (0x106d8 -> 0x106dc) , Line Inc (1) (79 -> 80)
+	Special Code : 49 : Addr Inc (4) (0x106dc -> 0x106e0) , Line Inc (3) (80 -> 83)
+	Special Code : 33 : Addr Inc (2) (0x106e0 -> 0x106e2) , Line Inc (1) (83 -> 84)
+	Special Code : 35 : Addr Inc (2) (0x106e2 -> 0x106e4) , Line Inc (3) (84 -> 87)
+	Special Code : 35 : Addr Inc (2) (0x106e4 -> 0x106e6) , Line Inc (3) (87 -> 90)
+	Line inc 0: from 90 to 113
+	Special Code : 32 : Addr Inc (2) (0x106e6 -> 0x106e8) , Line Inc (0) (113 -> 113)
+	Special Code : 49 : Addr Inc (4) (0x106e8 -> 0x106ec) , Line Inc (3) (113 -> 116)
+	Special Code : 49 : Addr Inc (4) (0x106ec -> 0x106f0) , Line Inc (3) (116 -> 119)
+	Special Code : 33 : Addr Inc (2) (0x106f0 -> 0x106f2) , Line Inc (1) (119 -> 120)
+	Special Code : 36 : Addr Inc (2) (0x106f2 -> 0x106f4) , Line Inc (4) (120 -> 124)
+	Special Code : 50 : Addr Inc (4) (0x106f4 -> 0x106f8) , Line Inc (4) (124 -> 128)
+	Line inc 0: from 128 to 113
+	Special Code : 46 : Addr Inc (4) (0x106f8 -> 0x106fc) , Line Inc (0) (113 -> 113)
+	Special Code : 52 : Addr Inc (4) (0x106fc -> 0x10700) , Line Inc (6) (113 -> 119)
+	Special Code : 47 : Addr Inc (4) (0x10700 -> 0x10704) , Line Inc (1) (119 -> 120)
+	Address inc 2: from 0x10704 to 0x10706
+	Extended Opcode 1 : End of sequence 
+	section name:.debug_frame
+	section name:.debug_str
+	section name:.debug_loc
+	section name:.debug_ranges
+	section name:.shstrtab
+	section name:.symtab
+	section name:.strtab
+ 
+  ===== processAbbrevTable ====
+  <11> Abbrev Number: 1 (DW_TAG_compile_unit)
+	 DW_AT_stmt_list :  0  
+	 DW_AT_low_pc :  67288  
+	 DW_AT_high_pc :  67336  
+	 DW_AT_name :   ../ports/sysdeps/arm/start.S 
+	 DW_AT_comp_dir :   /home/tcwg-buildslave/workspace/tcwg-make-release/label/docker-trusty-amd64-tcwg-build/target/arm-linux-gnueabi/snapshots/eglibc.git~linaro_eglibc-2_19/libc/csu 

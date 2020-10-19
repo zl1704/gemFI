@@ -139,6 +139,7 @@ class BaseTLB : public SimObject
     virtual Port* getTableWalkerPort() { return NULL; }
 
     void memInvalidate() { flushAll(); }
+
 };
 
 #endif // __ARCH_GENERIC_TLB_HH__

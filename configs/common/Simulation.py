@@ -438,7 +438,7 @@ def run(options, root, testsys, cpu_class):
         cptdir = m5.options.outdir
     else:
         cptdir = getcwd()
-
+    
     if options.fast_forward and options.checkpoint_restore != None:
         fatal("Can't specify both --fast-forward and --checkpoint-restore")
 
@@ -732,10 +732,10 @@ def run(options, root, testsys, cpu_class):
         else:
             exit_event = benchCheckpoints(options, maxtick, cptdir)
 
-    print('Exiting @ tick %i because %s' %
-          (m5.curTick(), exit_event.getCause()))
+    # print('Exiting @ tick %i because %s' %
+    #       (m5.curTick(), exit_event.getCause()))
     if options.checkpoint_at_end:
         m5.checkpoint(joinpath(cptdir, "cpt.%d"))
-
-    if exit_event.getCode() != 0:
-        print("Simulated exit code not 0! Exit code is", exit_event.getCode())
+    # if exit_event.getCode() != 0:
+    #     print("Simulated exit code not 0! Exit code is", exit_event.getCode())
+    exit(exit_event.getCode())

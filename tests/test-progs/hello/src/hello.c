@@ -29,18 +29,42 @@
  */
 
 #include <stdio.h>
+#include "hello.h"
 
-int fun(int a ,int b){
+float globalaa;
+int gbb;
 
-  return a + b; 
-}
-
-
-int main(int argc, char* argv[])
+double fun(int a, double d, int b, char cc)
 {
-    printf("Hello world!\n");
-    int r = fun(5,6);
-    printf("The result is %d\n",r);	
-    return 0;
+  int c = a * b + cc;
+  printf("c addr :%p\n",&c);
+  return a + b + c + d;
 }
 
+void test()
+{
+  int size = 100;
+  int sum = 0;
+  for (int i = 0; i < size; i++)
+  {
+    sum += i;
+  }
+
+  if (sum > 100)
+    printf("sum > 100\n");
+
+  while (sum > 100)
+    sum--;
+}
+
+int main(int argc, char *argv[])
+{
+
+  globalaa = 10.0;
+  gbb = 10;
+  printf("Hello world!\n");
+  double r = fun(5, 1.1, 6, 'c');
+  printf("The result is %f\n", r);
+  printf("global aa :%f, bb: %d\n", globalaa, gbb);
+  return 0;
+}

@@ -49,6 +49,8 @@ class ThreadContext;
 
 class EmulationPageTable : public Serializable
 {
+  friend class FISystem;
+  friend class MpuFI;
   public:
     struct Entry
     {

@@ -61,16 +61,13 @@
 #include "sim/full_system.hh"
 #include "sim/system.hh"
 
-
-
 using namespace std;
 using namespace TheISA;
 
-void
-AtomicSimpleCPU::init()
+void AtomicSimpleCPU::init()
 {
     BaseSimpleCPU::init();
-    
+
     int cid = threadContexts[0]->contextId();
     ifetch_req->setContext(cid);
     data_read_req->setContext(cid);
@@ -80,7 +77,7 @@ AtomicSimpleCPU::init()
 
 AtomicSimpleCPU::AtomicSimpleCPU(AtomicSimpleCPUParams *p)
     : BaseSimpleCPU(p),
-      tickEvent([this]{ tick(); }, "AtomicSimpleCPU tick",
+      tickEvent([this] { tick(); }, "AtomicSimpleCPU tick",
                 false, Event::CPU_Tick_Pri),
       width(p->width), locked(false),
       simulate_data_stalls(p->simulate_data_stalls),
@@ -99,13 +96,12 @@ AtomicSimpleCPU::AtomicSimpleCPU(AtomicSimpleCPUParams *p)
     fiSystem = FISystem::create(this);
 }
 
-
 AtomicSimpleCPU::~AtomicSimpleCPU()
 {
-    if (tickEvent.scheduled()) {
+    if (tickEvent.scheduled())
+    {
         deschedule(tickEvent);
     }
-    
 }
 
 DrainState
@@ -117,10 +113,13 @@ AtomicSimpleCPU::drain()
     if (switchedOut())
         return DrainState::Drained;
 
-    if (!isCpuDrained()) {
+    if (!isCpuDrained())
+    {
         DPRINTF(Drain, "Requesting drain.\n");
         return DrainState::Draining;
-    } else {
+    }
+    else
+    {
         if (tickEvent.scheduled())
             deschedule(tickEvent);
 
@@ -130,15 +129,17 @@ AtomicSimpleCPU::drain()
     }
 }
 
-void
-AtomicSimpleCPU::threadSnoop(PacketPtr pkt, ThreadID sender)
+void AtomicSimpleCPU::threadSnoop(PacketPtr pkt, ThreadID sender)
 {
     DPRINTF(SimpleCPU, "received snoop pkt for addr:%#x %s\n", pkt->getAddr(),
             pkt->cmdString());
 
-    for (ThreadID tid = 0; tid < numThreads; tid++) {
-        if (tid != sender) {
-            if (getCpuAddrMonitor(tid)->doMonitor(pkt)) {
+    for (ThreadID tid = 0; tid < numThreads; tid++)
+    {
+        if (tid != sender)
+        {
+            if (getCpuAddrMonitor(tid)->doMonitor(pkt))
+            {
                 wakeup(tid);
             }
 
@@ -148,8 +149,7 @@ AtomicSimpleCPU::threadSnoop(PacketPtr pkt, ThreadID sender)
     }
 }
 
-void
-AtomicSimpleCPU::drainResume()
+void AtomicSimpleCPU::drainResume()
 {
     assert(!tickEvent.scheduled());
     if (switchedOut())
@@ -162,17 +162,22 @@ AtomicSimpleCPU::drainResume()
 
     _status = BaseSimpleCPU::Idle;
 
-    for (ThreadID tid = 0; tid < numThreads; tid++) {
-        if (threadInfo[tid]->thread->status() == ThreadContext::Active) {
+    for (ThreadID tid = 0; tid < numThreads; tid++)
+    {
+        if (threadInfo[tid]->thread->status() == ThreadContext::Active)
+        {
             threadInfo[tid]->notIdleFraction = 1;
             activeThreads.push_back(tid);
             _status = BaseSimpleCPU::Running;
 
             // Tick if any threads active
-            if (!tickEvent.scheduled()) {
+            if (!tickEvent.scheduled())
+            {
                 schedule(tickEvent, nextCycle());
             }
-        } else {
+        }
+        else
+        {
             threadInfo[tid]->notIdleFraction = 0;
         }
     }
@@ -181,8 +186,7 @@ AtomicSimpleCPU::drainResume()
     schedulePowerGatingEvent();
 }
 
-bool
-AtomicSimpleCPU::tryCompleteDrain()
+bool AtomicSimpleCPU::tryCompleteDrain()
 {
     if (drainState() != DrainState::Draining)
         return false;
@@ -197,9 +201,7 @@ AtomicSimpleCPU::tryCompleteDrain()
     return true;
 }
 
-
-void
-AtomicSimpleCPU::switchOut()
+void AtomicSimpleCPU::switchOut()
 {
     BaseSimpleCPU::switchOut();
 
@@ -208,9 +210,7 @@ AtomicSimpleCPU::switchOut()
     assert(isCpuDrained());
 }
 
-
-void
-AtomicSimpleCPU::takeOverFrom(BaseCPU *oldCPU)
+void AtomicSimpleCPU::takeOverFrom(BaseCPU *oldCPU)
 {
     BaseSimpleCPU::takeOverFrom(oldCPU);
 
@@ -218,20 +218,19 @@ AtomicSimpleCPU::takeOverFrom(BaseCPU *oldCPU)
     assert(!tickEvent.scheduled());
 }
 
-void
-AtomicSimpleCPU::verifyMemoryMode() const
+void AtomicSimpleCPU::verifyMemoryMode() const
 {
-    if (!system->isAtomicMode()) {
+    if (!system->isAtomicMode())
+    {
         fatal("The atomic CPU requires the memory system to be in "
               "'atomic' mode.\n");
     }
 }
 
-void
-AtomicSimpleCPU::activateContext(ThreadID thread_num)
+void AtomicSimpleCPU::activateContext(ThreadID thread_num)
 {
     DPRINTF(SimpleCPU, "ActivateContext %d\n", thread_num);
-   
+
     assert(thread_num < numThreads);
 
     threadInfo[thread_num]->notIdleFraction = 1;
@@ -239,25 +238,24 @@ AtomicSimpleCPU::activateContext(ThreadID thread_num)
                                  threadInfo[thread_num]->thread->lastSuspend);
     numCycles += delta;
 
-    if (!tickEvent.scheduled()) {
+    if (!tickEvent.scheduled())
+    {
         //Make sure ticks are still on multiples of cycles
         schedule(tickEvent, clockEdge(Cycles(0)));
     }
     _status = BaseSimpleCPU::Running;
-    if (std::find(activeThreads.begin(), activeThreads.end(), thread_num)
-        == activeThreads.end()) {
+    if (std::find(activeThreads.begin(), activeThreads.end(), thread_num) == activeThreads.end())
+    {
         activeThreads.push_back(thread_num);
     }
 
     BaseCPU::activateContext(thread_num);
 }
 
-
-void
-AtomicSimpleCPU::suspendContext(ThreadID thread_num)
+void AtomicSimpleCPU::suspendContext(ThreadID thread_num)
 {
     DPRINTF(SimpleCPU, "SuspendContext %d\n", thread_num);
-    
+
     assert(thread_num < numThreads);
     activeThreads.remove(thread_num);
 
@@ -268,10 +266,12 @@ AtomicSimpleCPU::suspendContext(ThreadID thread_num)
 
     threadInfo[thread_num]->notIdleFraction = 0;
 
-    if (activeThreads.empty()) {
+    if (activeThreads.empty())
+    {
         _status = Idle;
 
-        if (tickEvent.scheduled()) {
+        if (tickEvent.scheduled())
+        {
             deschedule(tickEvent);
         }
     }
@@ -279,14 +279,12 @@ AtomicSimpleCPU::suspendContext(ThreadID thread_num)
     BaseCPU::suspendContext(thread_num);
 }
 
-Tick
-AtomicSimpleCPU::sendPacket(MasterPort &port, const PacketPtr &pkt)
+Tick AtomicSimpleCPU::sendPacket(MasterPort &port, const PacketPtr &pkt)
 {
     return port.sendAtomic(pkt);
 }
 
-Tick
-AtomicSimpleCPU::AtomicCPUDPort::recvAtomicSnoop(PacketPtr pkt)
+Tick AtomicSimpleCPU::AtomicCPUDPort::recvAtomicSnoop(PacketPtr pkt)
 {
     DPRINTF(SimpleCPU, "received snoop pkt for addr:%#x %s\n", pkt->getAddr(),
             pkt->cmdString());
@@ -294,8 +292,10 @@ AtomicSimpleCPU::AtomicCPUDPort::recvAtomicSnoop(PacketPtr pkt)
     // X86 ISA: Snooping an invalidation for monitor/mwait
     AtomicSimpleCPU *cpu = (AtomicSimpleCPU *)(&owner);
 
-    for (ThreadID tid = 0; tid < cpu->numThreads; tid++) {
-        if (cpu->getCpuAddrMonitor(tid)->doMonitor(pkt)) {
+    for (ThreadID tid = 0; tid < cpu->numThreads; tid++)
+    {
+        if (cpu->getCpuAddrMonitor(tid)->doMonitor(pkt))
+        {
             cpu->wakeup(tid);
         }
     }
@@ -304,10 +304,12 @@ AtomicSimpleCPU::AtomicCPUDPort::recvAtomicSnoop(PacketPtr pkt)
     // When run without caches, Invalidation packets will not be received
     // hence we must check if the incoming packets are writes and wakeup
     // the processor accordingly
-    if (pkt->isInvalidate() || pkt->isWrite()) {
+    if (pkt->isInvalidate() || pkt->isWrite())
+    {
         DPRINTF(SimpleCPU, "received invalidation for addr:%#x\n",
                 pkt->getAddr());
-        for (auto &t_info : cpu->threadInfo) {
+        for (auto &t_info : cpu->threadInfo)
+        {
             TheISA::handleLockedSnoop(t_info->thread, pkt, cacheBlockMask);
         }
     }
@@ -315,56 +317,64 @@ AtomicSimpleCPU::AtomicCPUDPort::recvAtomicSnoop(PacketPtr pkt)
     return 0;
 }
 
-void
-AtomicSimpleCPU::AtomicCPUDPort::recvFunctionalSnoop(PacketPtr pkt)
+void AtomicSimpleCPU::AtomicCPUDPort::recvFunctionalSnoop(PacketPtr pkt)
 {
     DPRINTF(SimpleCPU, "received snoop pkt for addr:%#x %s\n", pkt->getAddr(),
             pkt->cmdString());
 
     // X86 ISA: Snooping an invalidation for monitor/mwait
     AtomicSimpleCPU *cpu = (AtomicSimpleCPU *)(&owner);
-    for (ThreadID tid = 0; tid < cpu->numThreads; tid++) {
-        if (cpu->getCpuAddrMonitor(tid)->doMonitor(pkt)) {
+    for (ThreadID tid = 0; tid < cpu->numThreads; tid++)
+    {
+        if (cpu->getCpuAddrMonitor(tid)->doMonitor(pkt))
+        {
             cpu->wakeup(tid);
         }
     }
 
     // if snoop invalidates, release any associated locks
-    if (pkt->isInvalidate()) {
+    if (pkt->isInvalidate())
+    {
         DPRINTF(SimpleCPU, "received invalidation for addr:%#x\n",
                 pkt->getAddr());
-        for (auto &t_info : cpu->threadInfo) {
+        for (auto &t_info : cpu->threadInfo)
+        {
             TheISA::handleLockedSnoop(t_info->thread, pkt, cacheBlockMask);
         }
     }
 }
 
-bool
-AtomicSimpleCPU::genMemFragmentRequest(const RequestPtr& req, Addr frag_addr,
-                                       int size, Request::Flags flags,
-                                       const std::vector<bool>& byte_enable,
-                                       int& frag_size, int& size_left) const
+bool AtomicSimpleCPU::genMemFragmentRequest(const RequestPtr &req, Addr frag_addr,
+                                            int size, Request::Flags flags,
+                                            const std::vector<bool> &byte_enable,
+                                            int &frag_size, int &size_left) const
 {
     bool predicate = true;
     Addr inst_addr = threadInfo[curThread]->thread->pcState().instAddr();
 
     frag_size = std::min(
         cacheLineSize() - addrBlockOffset(frag_addr, cacheLineSize()),
-        (Addr) size_left);
+        (Addr)size_left);
     size_left -= frag_size;
 
-    if (!byte_enable.empty()) {
+    if (!byte_enable.empty())
+    {
         // Set up byte-enable mask for the current fragment
         auto it_start = byte_enable.begin() + (size - (frag_size + size_left));
         auto it_end = byte_enable.begin() + (size - size_left);
-        if (isAnyActiveElement(it_start, it_end)) {
+        if (isAnyActiveElement(it_start, it_end))
+        {
             req->setVirt(0, frag_addr, frag_size, flags, dataMasterId(),
                          inst_addr);
             req->setByteEnable(std::vector<bool>(it_start, it_end));
-        } else {
+        }
+        else
+        {
             predicate = false;
         }
-    } else {
+    }
+    else
+    {
         req->setVirt(0, frag_addr, frag_size, flags, dataMasterId(),
                      inst_addr);
         req->setByteEnable(std::vector<bool>());
@@ -373,13 +383,12 @@ AtomicSimpleCPU::genMemFragmentRequest(const RequestPtr& req, Addr frag_addr,
     return predicate;
 }
 
-Fault
-AtomicSimpleCPU::readMem(Addr addr, uint8_t * data, unsigned size,
-                         Request::Flags flags,
-                         const std::vector<bool>& byte_enable)
+Fault AtomicSimpleCPU::readMem(Addr addr, uint8_t *data, unsigned size,
+                               Request::Flags flags,
+                               const std::vector<bool> &byte_enable)
 {
-    SimpleExecContext& t_info = *threadInfo[curThread];
-    SimpleThread* thread = t_info.thread;
+    SimpleExecContext &t_info = *threadInfo[curThread];
+    SimpleThread *thread = t_info.thread;
 
     // use the CPU's statically allocated read request and packet objects
     const RequestPtr &req = data_read_req;
@@ -397,48 +406,61 @@ AtomicSimpleCPU::readMem(Addr addr, uint8_t * data, unsigned size,
     bool predicate;
     Fault fault = NoFault;
 
-    while (1) {
+    while (1)
+    {
         predicate = genMemFragmentRequest(req, frag_addr, size, flags,
                                           byte_enable, frag_size, size_left);
 
         // translate to physical address
-        if (predicate) {
+        if (predicate)
+        {
             fault = thread->dtb->translateAtomic(req, thread->getTC(),
                                                  BaseTLB::Read);
         }
-        
         // Now do the access.
         if (predicate && fault == NoFault &&
-            !req->getFlags().isSet(Request::NO_ACCESS)) {
+            !req->getFlags().isSet(Request::NO_ACCESS))
+        {
             Packet pkt(req, Packet::makeReadCmd(req));
             pkt.dataStatic(data);
 
-            if (req->isMmappedIpr()) {
+            if (req->isMmappedIpr())
+            {
                 dcache_latency += TheISA::handleIprRead(thread->getTC(), &pkt);
-            } else {
+            }
+            else
+            {
                 dcache_latency += sendPacket(dcachePort, &pkt);
             }
             dcache_access = true;
 
             assert(!pkt.isError());
 
-            if (req->isLLSC()) {
+            if (req->isLLSC())
+            {
                 TheISA::handleLockedRead(thread, req);
             }
         }
 
+        fiSystem->memBarrier(frag_addr, data, frag_size, false);
         //If there's a fault, return it
-        if (fault != NoFault) {
-            if (req->isPrefetch()) {
+        if (fault != NoFault)
+        {
+            if (req->isPrefetch())
+            {
                 return NoFault;
-            } else {
+            }
+            else
+            {
                 return fault;
             }
         }
 
         // If we don't need to access further cache lines, stop now.
-        if (size_left == 0) {
-            if (req->isLockedRMW() && fault == NoFault) {
+        if (size_left == 0)
+        {
+            if (req->isLockedRMW() && fault == NoFault)
+            {
                 assert(!locked);
                 locked = true;
             }
@@ -455,16 +477,16 @@ AtomicSimpleCPU::readMem(Addr addr, uint8_t * data, unsigned size,
     }
 }
 
-Fault
-AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
-                          Request::Flags flags, uint64_t *res,
-                          const std::vector<bool>& byte_enable)
+Fault AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
+                                Request::Flags flags, uint64_t *res,
+                                const std::vector<bool> &byte_enable)
 {
-    SimpleExecContext& t_info = *threadInfo[curThread];
-    SimpleThread* thread = t_info.thread;
+    SimpleExecContext &t_info = *threadInfo[curThread];
+    SimpleThread *thread = t_info.thread;
     static uint8_t zero_array[64] = {};
 
-    if (data == NULL) {
+    if (data == NULL)
+    {
         assert(size <= 64);
         assert(flags & Request::STORE_NO_DATA);
         // This must be a cache block cleaning request
@@ -478,7 +500,6 @@ AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
         traceData->setMem(addr, size, flags);
 
     dcache_latency = 0;
-
     req->taskId(taskId());
 
     Addr frag_addr = addr;
@@ -488,7 +509,8 @@ AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
     bool predicate;
     Fault fault = NoFault;
 
-    while (1) {
+    while (1)
+    {
         predicate = genMemFragmentRequest(req, frag_addr, size, flags,
                                           byte_enable, frag_size, size_left);
 
@@ -498,30 +520,39 @@ AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
                                                  BaseTLB::Write);
 
         // Now do the access.
-        if (predicate && fault == NoFault) {
-            bool do_access = true;  // flag to suppress cache access
+        if (predicate && fault == NoFault)
+        {
+            bool do_access = true; // flag to suppress cache access
 
-            if (req->isLLSC()) {
+            if (req->isLLSC())
+            {
                 assert(curr_frag_id == 0);
                 do_access =
                     TheISA::handleLockedWrite(thread, req,
                                               dcachePort.cacheBlockMask);
-            } else if (req->isSwap()) {
+            }
+            else if (req->isSwap())
+            {
                 assert(curr_frag_id == 0);
-                if (req->isCondSwap()) {
+                if (req->isCondSwap())
+                {
                     assert(res);
                     req->setExtraData(*res);
                 }
             }
 
-            if (do_access && !req->getFlags().isSet(Request::NO_ACCESS)) {
+            if (do_access && !req->getFlags().isSet(Request::NO_ACCESS))
+            {
                 Packet pkt(req, Packet::makeWriteCmd(req));
                 pkt.dataStatic(data);
 
-                if (req->isMmappedIpr()) {
+                if (req->isMmappedIpr())
+                {
                     dcache_latency +=
                         TheISA::handleIprWrite(thread->getTC(), &pkt);
-                } else {
+                }
+                else
+                {
                     dcache_latency += sendPacket(dcachePort, &pkt);
 
                     // Notify other threads on this CPU of write
@@ -530,29 +561,37 @@ AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
                 dcache_access = true;
                 assert(!pkt.isError());
 
-                if (req->isSwap()) {
+                if (req->isSwap())
+                {
                     assert(res && curr_frag_id == 0);
                     memcpy(res, pkt.getConstPtr<uint8_t>(), size);
                 }
             }
 
-            if (res && !req->isSwap()) {
+            if (res && !req->isSwap())
+            {
                 *res = req->getExtraData();
             }
         }
 
+        //放在这里， 下面可能提前返回了
+        fiSystem->memBarrier(frag_addr, data, frag_size, true);
         //If there's a fault or we don't need to access a second cache line,
         //stop now.
         if (fault != NoFault || size_left == 0)
         {
-            if (req->isLockedRMW() && fault == NoFault) {
+            if (req->isLockedRMW() && fault == NoFault)
+            {
                 assert(!req->isMasked());
                 locked = false;
             }
 
-            if (fault != NoFault && req->isPrefetch()) {
+            if (fault != NoFault && req->isPrefetch())
+            {
                 return NoFault;
-            } else {
+            }
+            else
+            {
                 return fault;
             }
         }
@@ -569,12 +608,11 @@ AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
     }
 }
 
-Fault
-AtomicSimpleCPU::amoMem(Addr addr, uint8_t* data, unsigned size,
-                        Request::Flags flags, AtomicOpFunctorPtr amo_op)
+Fault AtomicSimpleCPU::amoMem(Addr addr, uint8_t *data, unsigned size,
+                              Request::Flags flags, AtomicOpFunctorPtr amo_op)
 {
-    SimpleExecContext& t_info = *threadInfo[curThread];
-    SimpleThread* thread = t_info.thread;
+    SimpleExecContext &t_info = *threadInfo[curThread];
+    SimpleThread *thread = t_info.thread;
 
     // use the CPU's statically allocated amo request and packet objects
     const RequestPtr &req = data_amo_req;
@@ -593,7 +631,8 @@ AtomicSimpleCPU::amoMem(Addr addr, uint8_t* data, unsigned size,
     // accesses that cross cache-line boundaries, the cache needs to be
     // modified to support locking both cache lines to guarantee the
     // atomicity.
-    if (secondAddr > addr) {
+    if (secondAddr > addr)
+    {
         panic("AMO request should not access across a cache line boundary\n");
     }
 
@@ -605,10 +644,11 @@ AtomicSimpleCPU::amoMem(Addr addr, uint8_t* data, unsigned size,
 
     // translate to physical address
     Fault fault = thread->dtb->translateAtomic(req, thread->getTC(),
-                                                      BaseTLB::Write);
+                                               BaseTLB::Write);
 
     // Now do the access.
-    if (fault == NoFault && !req->getFlags().isSet(Request::NO_ACCESS)) {
+    if (fault == NoFault && !req->getFlags().isSet(Request::NO_ACCESS))
+    {
         // We treat AMO accesses as Write accesses with SwapReq command
         // data will hold the return data of the AMO access
         Packet pkt(req, Packet::makeWriteCmd(req));
@@ -616,7 +656,8 @@ AtomicSimpleCPU::amoMem(Addr addr, uint8_t* data, unsigned size,
 
         if (req->isMmappedIpr())
             dcache_latency += TheISA::handleIprRead(thread->getTC(), &pkt);
-        else {
+        else
+        {
             dcache_latency += sendPacket(dcachePort, &pkt);
         }
 
@@ -625,8 +666,10 @@ AtomicSimpleCPU::amoMem(Addr addr, uint8_t* data, unsigned size,
         assert(!pkt.isError());
         assert(!req->isLLSC());
     }
+    fiSystem->memBarrier(addr, data, size, true);
 
-    if (fault != NoFault && req->isPrefetch()) {
+    if (fault != NoFault && req->isPrefetch())
+    {
         return NoFault;
     }
 
@@ -634,20 +677,19 @@ AtomicSimpleCPU::amoMem(Addr addr, uint8_t* data, unsigned size,
     return fault;
 }
 
-void
-AtomicSimpleCPU::tick()
+void AtomicSimpleCPU::tick()
 {
     DPRINTF(SimpleCPU, "Tick\n");
 
     // Change thread if multi-threaded
     swapActiveThread();
-    
+
     //FI Progress
     fiSystem->startTick();
-    
 
     // Set memroy request ids to current thread
-    if (numThreads > 1) {
+    if (numThreads > 1)
+    {
         ContextID cid = threadContexts[curThread]->contextId();
 
         ifetch_req->setContext(cid);
@@ -656,22 +698,25 @@ AtomicSimpleCPU::tick()
         data_amo_req->setContext(cid);
     }
 
-    SimpleExecContext& t_info = *threadInfo[curThread];
-    SimpleThread* thread = t_info.thread;
-    
+    SimpleExecContext &t_info = *threadInfo[curThread];
+    SimpleThread *thread = t_info.thread;
+
     Tick latency = 0;
 
-    for (int i = 0; i < width || locked; ++i) {
+    for (int i = 0; i < width || locked; ++i)
+    {
         numCycles++;
         updateCycleCounters(BaseCPU::CPU_STATE_ON);
 
-        if (!curStaticInst || !curStaticInst->isDelayedCommit()) {
+        if (!curStaticInst || !curStaticInst->isDelayedCommit())
+        {
             checkForInterrupts();
             checkPcEventQueue();
         }
 
         // We must have just got suspended by a PC event
-        if (_status == Idle) {
+        if (_status == Idle)
+        {
             tryCompleteDrain();
             return;
         }
@@ -683,19 +728,22 @@ AtomicSimpleCPU::tick()
         // DPRINTF(SimpleCPU,pc_str.c_str());
         bool needToFetch = !isRomMicroPC(pcState.microPC()) &&
                            !curMacroStaticInst;
-        if (needToFetch) {
+        if (needToFetch)
+        { //取指
             ifetch_req->taskId(taskId());
             setupFetchRequest(ifetch_req);
             fault = thread->itb->translateAtomic(ifetch_req, thread->getTC(),
                                                  BaseTLB::Execute);
         }
 
-        if (fault == NoFault) {
+        if (fault == NoFault)
+        {
             Tick icache_latency = 0;
             bool icache_access = false;
             dcache_access = false; // assume no dcache access
 
-            if (needToFetch) {
+            if (needToFetch)
+            {
                 // This is commented out because the decoder would act like
                 // a tiny cache otherwise. It wouldn't be flushed when needed
                 // like the I cache. It should be flushed, and when that works
@@ -703,52 +751,53 @@ AtomicSimpleCPU::tick()
                 //Fetch more instruction memory if necessary
                 //if (decoder.needMoreBytes())
                 //{
-                    icache_access = true;
-                    Packet ifetch_pkt = Packet(ifetch_req, MemCmd::ReadReq);
-                    ifetch_pkt.dataStatic(&inst);
+                icache_access = true;
+                Packet ifetch_pkt = Packet(ifetch_req, MemCmd::ReadReq);
+                ifetch_pkt.dataStatic(&inst);
 
-                    icache_latency = sendPacket(icachePort, &ifetch_pkt);
+                icache_latency = sendPacket(icachePort, &ifetch_pkt);
 
-                    assert(!ifetch_pkt.isError());
+                assert(!ifetch_pkt.isError());
 
-                    // ifetch_req is initialized to read the instruction directly
-                    // into the CPU object's inst field.
+                // ifetch_req is initialized to read the instruction directly
+                // into the CPU object's inst field.
                 //}
             }
-            
-            preExecute();//trace instruction
+            fiSystem->decode();
+            preExecute(); //decode
             fiSystem->process();
-            
             Tick stall_ticks = 0;
-            if (curStaticInst) {
+            if (curStaticInst)
+            {
                 //普通指令，直接执行，系统调用指令通过fault后面invoke
-                fault = curStaticInst->execute(&t_info, traceData);//build/X86/arch/x86/generated/exec-ns.cc.inc
-                
+                fault = curStaticInst->execute(&t_info, traceData); //build/X86/arch/x86/generated/exec-ns.cc.inc
                 // keep an instruction count
-                if (fault == NoFault) {
+                if (fault == NoFault)
+                {
                     countInst();
                     ppCommit->notify(std::make_pair(thread, curStaticInst));
                 }
-                else if (traceData && !DTRACE(ExecFaulting)) {
+                else if (traceData && !DTRACE(ExecFaulting))
+                {
                     delete traceData;
                     traceData = NULL;
                 }
 
                 if (fault != NoFault &&
-                    dynamic_pointer_cast<SyscallRetryFault>(fault)) {
+                    dynamic_pointer_cast<SyscallRetryFault>(fault))
+                {
                     // Retry execution of system calls after a delay.
                     // Prevents immediate re-execution since conditions which
                     // caused the retry are unlikely to change every tick.
                     stall_ticks += clockEdge(syscallRetryLatency) - curTick();
                 }
-                
+
                 postExecute();
-                
             }
 
             // @todo remove me after debugging with legion done
             if (curStaticInst && (!curStaticInst->isMicroop() ||
-                        curStaticInst->isFirstMicroop()))
+                                  curStaticInst->isFirstMicroop()))
                 instCnt++;
 
             if (simulate_inst_stalls && icache_access)
@@ -757,51 +806,49 @@ AtomicSimpleCPU::tick()
             if (simulate_data_stalls && dcache_access)
                 stall_ticks += dcache_latency;
 
-            if (stall_ticks) {
+            if (stall_ticks)
+            {
                 // the atomic cpu does its accounting in ticks, so
                 // keep counting in ticks but round to the clock
                 // period
                 latency += divCeil(stall_ticks, clockPeriod()) *
-                    clockPeriod();
+                           clockPeriod();
             }
-
         }
-        
+
         if (fault != NoFault || !t_info.stayAtPC)
-            advancePC(fault);//系统调用
+            advancePC(fault); //系统调用
     }
-    
+
     if (tryCompleteDrain())
         return;
 
     // instruction takes at least one cycle
     if (latency < clockPeriod())
         latency = clockPeriod();
-    
+
     if (_status != Idle)
         reschedule(tickEvent, curTick() + latency, true);
-    
 }
 
-void AtomicSimpleCPU::haltContext(ThreadID thread_num){
+void AtomicSimpleCPU::haltContext(ThreadID thread_num)
+{
     BaseSimpleCPU::haltContext(thread_num);
     fiSystem->close();
 }
 
-void
-AtomicSimpleCPU::regProbePoints()
+void AtomicSimpleCPU::regProbePoints()
 {
     BaseCPU::regProbePoints();
 
-    ppCommit = new ProbePointArg<pair<SimpleThread*, const StaticInstPtr>>
-                                (getProbeManager(), "Commit");
+    ppCommit = new ProbePointArg<pair<SimpleThread *, const StaticInstPtr>>(getProbeManager(), "Commit");
 }
 
-void
-AtomicSimpleCPU::printAddr(Addr a)
+void AtomicSimpleCPU::printAddr(Addr a)
 {
     dcachePort.printAddr(a);
 }
+
 
 ////////////////////////////////////////////////////////////////////////
 //

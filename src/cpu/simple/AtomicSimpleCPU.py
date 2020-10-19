@@ -41,7 +41,7 @@
 from m5.params import *
 from m5.objects.BaseSimpleCPU import BaseSimpleCPU
 from m5.objects.SimPoint import SimPoint
-
+from m5.defines import buildEnv
 class AtomicSimpleCPU(BaseSimpleCPU):
     """Simple CPU model executing a configurable number of
     instructions per cycle. This model uses the simplified 'atomic'
@@ -61,6 +61,7 @@ class AtomicSimpleCPU(BaseSimpleCPU):
     width = Param.Int(1, "CPU width")
     simulate_data_stalls = Param.Bool(False, "Simulate dcache stall cycles")
     simulate_inst_stalls = Param.Bool(False, "Simulate icache stall cycles")
+        
 
     def addSimPointProbe(self, interval):
         simpoint = SimPoint()
