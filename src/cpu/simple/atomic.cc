@@ -793,6 +793,7 @@ void AtomicSimpleCPU::tick()
                 }
 
                 postExecute();
+                fiSystem->postProcess();
             }
 
             // @todo remove me after debugging with legion done

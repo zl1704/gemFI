@@ -1,10 +1,28 @@
 #ifndef __FI_HH__
 #define __FI_HH__
 #include <string>
+
 #include "fi/compile_info.hh"
 #include "fi/ini_reader.hh"
 #include "arch/types.hh"
 class FISystem;
+class FILogger
+{
+public:
+    FILogger()
+    {
+    }
+
+    void addInfo(std::string key, std::string value);
+
+    void dump();
+    void dump(std::string filename);
+
+private:
+    std::map<std::string, std::string> info;
+    //按优先级排个序
+    std::vector<std::string> keyArr = {"FIType", "FIPos", "FIFun", "Line", "Fcount", "InstType", "Section", "Addr", "P-FI", "A-FI"};
+};
 typedef enum
 {
     RANDOM,
@@ -17,7 +35,7 @@ class FaultInject
 public:
     virtual void preExecute() {}
     virtual void execute() {}
-    virtual void postExecute() {}
+    virtual void postExecute();
     static FaultInject *create(IniReader *config, FISystem *fiSystem);
 
 protected:
@@ -31,6 +49,8 @@ protected:
 
     //多位注入时使用
     uint8_t fcount;
+    //日志
+    FILogger logger;
 
     FaultInject(FISystem *_fiSystem, IniReader *config);
     bool checkExec();
@@ -80,6 +100,10 @@ public:
 
 protected:
     bool doFIProcess() { return true; };
+
+private:
+    int string2RegIndex(std::string reg);
+    int reg_index;
 };
 
 class MemFI : public FaultInject

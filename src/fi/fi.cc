@@ -1,4 +1,6 @@
 #include <ctime>
+#include <iomanip>
+
 #include "fi/fi.hh"
 #include "fi/util.hh"
 #include "fi/fi_sys.hh"
@@ -13,6 +15,36 @@
 #include "debug/CACHEFI.hh"
 using namespace std;
 using namespace util;
+
+void FILogger::addInfo(string key, string value)
+{
+    info.insert(pair<string, string>(key, value));
+}
+void FILogger::dump()
+{
+
+    for (auto it : info)
+    {
+        cout << "\t" << setw(8) << it.first << " : " << it.second << endl;
+    }
+}
+void FILogger::dump(string filename)
+{
+    std::ofstream file;
+    file.open(filename);
+    for (auto key : keyArr)
+    {
+
+        auto it = info.find(key);
+        if (it != info.end())
+            file << "\t" << setw(8) << it->first << " : " << it->second << endl;
+    }
+
+    // for (auto it : info)
+    // {
+    //     file << "\t" << setw(8) << it.first << " : " << it.second << endl;
+    // }
+}
 FaultInject *FaultInject::create(IniReader *config, FISystem *fiSystem)
 {
     FaultInject *fi = nullptr;
@@ -49,6 +81,13 @@ FaultInject::FaultInject(FISystem *_fiSystem, IniReader *config) : fiSystem(_fiS
     if (!random)
         readFLData(config);
     finish = false;
+
+    //record logger
+    if (line >= 0)
+        logger.addInfo("Line", to_string(line));
+    logger.addInfo("FIFun", function->getName());
+    logger.addInfo("FIType", random ? "Random" : "Fixed");
+    logger.addInfo("Fcount", to_string(fcount));
 };
 
 void FaultInject::readFLData(IniReader *config)
@@ -159,6 +198,17 @@ bool FaultInject::checkExec()
     return false;
 }
 
+void FaultInject::postExecute()
+{
+
+    string file = fiSystem->config->getValue("GLOBAL", "log");
+    if (file != "")
+    {
+
+        logger.dump(file);
+    }
+}
+
 VarFI::VarFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
     string var_name = config->getValue("VAR", "name");
@@ -166,6 +216,7 @@ VarFI::VarFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, conf
         var = function->findVar(var_name);
     if (!var)
         var = fiSystem->getVar("", var_name);
+    logger.addInfo("FIPos", "VAR");
 }
 
 void VarFI::execute()
@@ -193,6 +244,26 @@ void VarFI::execute()
 
 REGFI::REGFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
+    reg_index = -1;
+    logger.addInfo("FIPos", "Register");
+    string reg = fiSystem->config->getValue("GLOBAL", "reg");
+    if (reg != "")
+        reg_index = string2RegIndex(reg);
+}
+
+int REGFI::string2RegIndex(string reg)
+{
+    string lower_s = to_lower(reg);
+    int res = -1;
+    if (lower_s[0] == 'r')
+    {
+
+        to_number(lower_s.substr(1), res);
+    }
+    else if (lower_s == "pc")
+        res = 15;
+
+    return res;
 }
 
 void REGFI::execute()
@@ -201,13 +272,26 @@ void REGFI::execute()
     if (!checkExec())
         return;
 
-    IntRegIndex ri = (IntRegIndex)genRan(0, 7);
-    uint64_t rVal = fiSystem->readReg(ri);
-    uint64_t fVal = ranFlip(rVal, 32, fcount);
+    uint8_t ri;
+    if (reg_index >= 0 && reg_index < 16)
+        ri = reg_index;
+    else
+        ri = genRan(0, 15);
+    uint32_t rVal;
+    if (ri != 15)
+        rVal = fiSystem->readReg((IntRegIndex)ri);
+    else
+        rVal = (uint32_t)fiSystem->thread->instAddr();
+    uint32_t fVal = ranFlip(rVal, 32, fcount);
 
     DPRINTF(REGFI, "REGFI INFO: ,REG : %d , Before Val: 0x%x , After Val: 0x%x \n ", ri, rVal, fVal);
-
-    fiSystem->writeReg(ri, fVal);
+    if (ri != 15)
+        fiSystem->writeReg((IntRegIndex)ri, fVal);
+    else
+        fiSystem->thread->pcState().set(fVal);
+    logger.addInfo("Section", csprintf("R%d", ri));
+    logger.addInfo("P-FI", csprintf("%x", rVal));
+    logger.addInfo("A-FI", csprintf("%x", fVal));
 
     finish = true;
 }
@@ -215,6 +299,7 @@ void REGFI::execute()
 MemFI::MemFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
     fiSystem->memRecords.resize(-1);
+    logger.addInfo("FIPos", "Mem");
 }
 
 void MemFI::execute()
@@ -233,6 +318,10 @@ void MemFI::execute()
     fiSystem->memRecords.dump();
 
     finish = true;
+
+    logger.addInfo("Addr", csprintf("%x", datap.first));
+    logger.addInfo("P-FI", csprintf("%x", datap.second));
+    logger.addInfo("A-FI", csprintf("%x", fVal));
 }
 
 CUFI::CUFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
@@ -246,10 +335,14 @@ void CUFI::preExecute()
         return;
     AtomicSimpleCPU *cpu = fiSystem->getCPU();
     DPRINTF(CUFI, "CUFI INFO : Before execute instruction: %x\n", cpu->inst);
+    ArmISA::MachInst inst = cpu->inst;
     cpu->inst = ranFlip(cpu->inst, 32, fcount);
     DPRINTF(CUFI, "CUFI INFO : After execute instruction: %x\n", cpu->inst);
     finish = true;
     printFlag = true;
+
+    logger.addInfo("P-FI", csprintf("%x", inst));
+    logger.addInfo("A-FI", csprintf("%x", cpu->inst));
 }
 
 void CUFI::execute()
@@ -266,6 +359,7 @@ DpuFI::DpuFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, conf
     isRd = false;
     printFlag = false;
     init();
+    logger.addInfo("FIPos", "DPU");
 }
 
 void DpuFI::init()
@@ -363,6 +457,10 @@ void DpuFI::fiOpcode()
 
     inst = insertBits(inst, 24, 20, new_op);
     DPRINTF(DPUFI, "DpuFI fiOpcode INFO : After execute instruction: %x, op : %s\n", inst, opName(new_op).c_str());
+
+    logger.addInfo("Section", "Op");
+    logger.addInfo("P-FI", csprintf("%x", old_op) + "-" + opName(old_op));
+    logger.addInfo("A-FI", csprintf("%x", new_op) + "-" + opName(new_op));
 }
 //操作数1
 void DpuFI::fiRn()
@@ -372,9 +470,13 @@ void DpuFI::fiRn()
     uint8_t rn = bits(inst, 16, 19);
     uint64_t rnv = fiSystem->readReg((IntRegIndex)rn);
     // inst = flip(inst,nrn);
-    rnv = ranFlip(rnv, 32, fcount);
+
+    uint64_t frnv = ranFlip(rnv, 32, fcount);
     fiSystem->writeReg((IntRegIndex)rn, rnv);
     DPRINTF(DPUFI, "DpuFI fiRn INFO : After execute instruction: %x\n", inst);
+    logger.addInfo("Section", csprintf("Rn-R%d", rn));
+    logger.addInfo("P-FI", csprintf("%x", rnv));
+    logger.addInfo("A-FI", csprintf("%x", frnv));
 }
 //目的寄存器
 void DpuFI::fiRd()
@@ -397,7 +499,7 @@ void DpuFI::fiRROp2()
      *  2. op2 : 5-6
      *  3. imm5: 7-11
      */
-
+    logger.addInfo("InstType", "R");
     uint8_t ran = genRan(1, 3);
     if (ran == 1)
     {
@@ -410,12 +512,18 @@ void DpuFI::fiRROp2()
         uint32_t new_val = ranFlip(rVal, 32, fcount);
         DPRINTF(DPUFI, "DpuFI RR-Inst INFO : After execute R%d : %x \n", Rm, new_val);
         fiSystem->writeReg((IntRegIndex)Rm, new_val);
+        logger.addInfo("Section", csprintf("Rm-R%d", Rm));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", new_val));
     }
     else if (ran == 2)
     {
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Op2 INFO : Before execute : %x\n", bits(inst, 6, 5));
         inst = ranFlip(inst, 5, 6, 1);
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Op2 INFO : After execute : %x\n", bits(inst, 6, 5));
+        logger.addInfo("Section", "Op2");
+        logger.addInfo("P-FI", csprintf("%x", bits(fiSystem->getCPU()->inst, 6, 5)));
+        logger.addInfo("A-FI", csprintf("%x", bits(inst, 6, 5)));
     }
     else
     {
@@ -423,6 +531,9 @@ void DpuFI::fiRROp2()
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Imm INFO : Before execute : %x\n", bits(inst, 11, 7));
         inst = ranFlip(inst, 7, 11, 1);
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Imm INFO : After execute : %x\n", bits(inst, 11, 7));
+        logger.addInfo("Section", "Imm");
+        logger.addInfo("P-FI", csprintf("%x", bits(fiSystem->getCPU()->inst, 11, 7)));
+        logger.addInfo("A-FI", csprintf("%x", bits(inst, 11, 7)));
     }
 }
 //RRS 第二个操作数
@@ -434,7 +545,7 @@ void DpuFI::fiRRSOp2()
      *  2. op2 : 5-6
      *  3. Rs  : 8-11
      */
-
+    logger.addInfo("InstType", "RRs");
     uint8_t ran = genRan(1, 3);
     if (ran == 1)
     {
@@ -447,12 +558,18 @@ void DpuFI::fiRRSOp2()
         uint32_t new_val = ranFlip(rVal, 32, fcount);
         DPRINTF(DPUFI, "DpuFI RR-Inst INFO : After execute R%d : %x \n", Rm, new_val);
         fiSystem->writeReg((IntRegIndex)Rm, new_val);
+        logger.addInfo("Section", csprintf("Rm-R%d", Rm));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", new_val));
     }
     else if (ran == 2)
     {
         DPRINTF(DPUFI, "DpuFI RRS-Inst Change Op2 INFO : Before execute : %x\n", bits(inst, 6, 5));
         inst = ranFlip(inst, 5, 6);
         DPRINTF(DPUFI, "DpuFI RRS-Inst Change Op2 INFO : After execute : %x\n", bits(inst, 6, 5));
+        logger.addInfo("Section", "Op2");
+        logger.addInfo("P-FI", csprintf("%x", bits(fiSystem->getCPU()->inst, 6, 5)));
+        logger.addInfo("A-FI", csprintf("%x", bits(inst, 6, 5)));
     }
     else
     {
@@ -466,6 +583,9 @@ void DpuFI::fiRRSOp2()
         uint32_t new_val = ranFlip(rVal, 32, fcount);
         DPRINTF(DPUFI, "DpuFI RRS-Inst INFO : After execute R%d : %x \n", Rs, new_val);
         fiSystem->writeReg((IntRegIndex)Rs, new_val);
+        logger.addInfo("Section", csprintf("Rs-R%d", Rs));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", new_val));
     }
 }
 //RI 第二个操作数
@@ -591,15 +711,20 @@ void DpuFI::postExecute()
     if (isRd)
     {
         // uint8_t nrd = genRan(0, 31);
-        uint8_t rd = bits(inst, 12, 15);
-        uint64_t rdv = fiSystem->readReg((IntRegIndex)rd);
+        uint8_t rd = bits(inst, 15, 12);
+        printf("rd is %d\n", rd);
+        uint32_t rdv = fiSystem->readReg((IntRegIndex)rd);
         DPRINTF(DPUFI, "DpuFI fiRd INFO : Before execute R%d  : %x \n", rd, rdv);
 
         // inst = flip(inst,nrn);
-        rdv = ranFlip(rdv, 32, fcount);
+        uint32_t frdv = ranFlip(rdv, 32, fcount);
         fiSystem->writeReg((IntRegIndex)rd, rdv);
-        DPRINTF(DPUFI, "DpuFI fiRd INFO : After execute  R%d  : %x \n", rd, rdv);
+        DPRINTF(DPUFI, "DpuFI fiRd INFO : After execute  R%d  : %x \n", rd, frdv);
         isRd = false;
+        logger.addInfo("Section", csprintf("Rd-R%d", rd));
+        logger.addInfo("P-FI", csprintf("%x", rdv));
+        logger.addInfo("A-FI", csprintf("%x", frdv));
+        FaultInject::postExecute();
     }
 }
 
@@ -607,6 +732,7 @@ void DpuFI::postExecute()
 
 MpuFI::MpuFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
+    logger.addInfo("FIPos", "DPU");
 }
 
 void MpuFI::execute()
@@ -641,6 +767,8 @@ bool MpuFI::doFIProcess()
     DPRINTF(MPUFI, "MPUFI Info : Before Paddr: %x , After Paddr : %x \n", paddr, fval);
     fiSystem->pTable->unmap(vaddr, 0x1000);
     fiSystem->pTable->map(vaddr, fval, 0x1000);
+    logger.addInfo("P-FI", csprintf("%x", paddr));
+    logger.addInfo("A-FI", csprintf("%x", fval));
     // printTlb();
     return true;
 }
@@ -662,6 +790,7 @@ void MpuFI::printTlb()
 PFUFI::PFUFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
     printFlag = false;
+    logger.addInfo("FIPos", "PFU");
 }
 
 void PFUFI::preExecute()
@@ -669,11 +798,15 @@ void PFUFI::preExecute()
     if (!checkExec())
         return;
     AtomicSimpleCPU *cpu = fiSystem->getCPU();
+    MachInst old_inst = cpu->inst;
     DPRINTF(PFUFI, "PFUFI INFO : Before execute instruction: %x\n", cpu->inst);
     cpu->inst = ranFlip(cpu->inst, 32, fcount);
     DPRINTF(PFUFI, "PFUFI INFO : After execute instruction: %x\n", cpu->inst);
     finish = true;
     printFlag = true;
+
+    logger.addInfo("P-FI", csprintf("%x", old_inst));
+    logger.addInfo("A-FI", csprintf("%x", cpu->inst));
 }
 
 void PFUFI::execute()
@@ -691,6 +824,8 @@ CacheFI::CacheFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, 
 {
 
     fiSystem->memRecords.resize(256);
+
+    logger.addInfo("FIPos", "Cache");
 }
 
 void CacheFI::execute()
@@ -713,4 +848,8 @@ void CacheFI::execute()
     // fiSystem->memRecords.dump();
 
     finish = true;
+
+    logger.addInfo("Addr", csprintf("%x", datap.first));
+    logger.addInfo("P-FI", csprintf("%x", datap.second));
+    logger.addInfo("A-FI", csprintf("%x", fVal));
 }
