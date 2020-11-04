@@ -1,15 +1,64 @@
 gem5 Simulator System.  http://gem5.org
 gem5 is copyrighted software; use the --copyright option for details.
 
-gem5 compiled Oct 25 2020 13:45:51
-gem5 started Oct 25 2020 13:50:07
-gem5 executing on zlpc, pid 15579
-command line: build/ARM/gem5.opt --debug-flags=REGFI configs/example/se.py -c configs/fi/qs-arm
+gem5 compiled Nov  4 2020 21:12:15
+gem5 started Nov  4 2020 21:14:52
+gem5 executing on zlpc, pid 23260
+command line: build/ARM/gem5.opt --debug-flags=Exec configs/example/se.py -c configs/fi/hello-arm
 
 Global frequency set at 1000000000000 ticks per second
+fcount :3
 **** REAL SIMULATION ****
-init ...
-sort ...
-4315500: REGFI: REGFI INFO: ,REG : 15 , Before Val: 0x10914 , After Val: 0x80010914 
- print ...
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 
+      0: system.cpu: T0 : @fini+15    :   mov.w   fp, #0           : IntAlu :  D=0x0000000000000000
+    500: system.cpu: T0 : @_start+3    :   mov.w   lr, #0           : IntAlu :  D=0x0000000000000000
+   1000: system.cpu: T0 : @_start+7    : ldmstm                    
+   1000: system.cpu: T0 : @_start+7. 0 :   ldr_uop   r1, [sp, #0]   : MemRead :  D=0x0000000000000001 A=0xbeffff10
+   1500: system.cpu: T0 : @_start+7. 1 :   addi_uop   sp, sp, #4    : IntAlu :  D=0x00000000beffff14
+   2000: system.cpu: T0 : @_start+9    :   mov   r2, sp             : IntAlu :  D=0x00000000beffff14
+   2500: system.cpu: T0 : @_start+11    : ldmstm                    
+   2500: system.cpu: T0 : @_start+11. 0 :   str_uop   r2, [sp, #4]   : MemWrite :  D=0x00000000beffff14 A=0xbeffff10
+   3000: system.cpu: T0 : @_start+11. 1 :   subi_uop   sp, sp, #4    : IntAlu :  D=0x00000000beffff10
+   3500: system.cpu: T0 : @_start+13    : ldmstm                    
+   3500: system.cpu: T0 : @_start+13. 0 :   str_uop   r0, [sp, #4]   : MemWrite :  D=0x0000000000000000 A=0xbeffff0c
+   4000: system.cpu: T0 : @_start+13. 1 :   subi_uop   sp, sp, #4    : IntAlu :  D=0x00000000beffff0c
+   4500: system.cpu: T0 : @_start+15    :   ldr.w   r12, [pc, #16]   : MemRead :  D=0x0000000000010e2d A=0x106fc
+   5000: system.cpu: T0 : @_start+19    :   str.w   r12, [sp, #-4]! 
+   5000: system.cpu: T0 : @_start+19. 0 :   str.w   r12, [sp, #-4]!  : MemWrite :  D=0x0000000000010e2d A=0xbeffff08
+   5500: system.cpu: T0 : @_start+19. 1 :   subi_uop.w   sp, sp, #4  : IntAlu :  D=0x00000000beffff08
+   6000: system.cpu: T0 : @_start+23    :   ldr   r0, [pc, #12]      : MemRead :  D=0x00000000000107f0 A=0x10700
+   6500: system.cpu: T0 : @_start+25    :   ldr   r3, [pc, #16]      : MemRead :  D=0x0000000000010db5 A=0x10704
+   7000: system.cpu: T0 : @_start+27    :   bl.w   <main+140>        : IntAlu :  D=0x00000000000106f9
+--- BEGIN LIBC BACKTRACE ---
+build/ARM/gem5.opt(_Z15print_backtracev+0x28)[0x2344c08]
+build/ARM/gem5.opt(_Z12abortHandleri+0x46)[0x2356626]
+/lib/x86_64-linux-gnu/libpthread.so.0(+0x11390)[0x7f6d9a5ec390]
+/lib/x86_64-linux-gnu/libc.so.6(gsignal+0x38)[0x7f6d98ff4438]
+/lib/x86_64-linux-gnu/libc.so.6(abort+0x16a)[0x7f6d98ff603a]
+/lib/x86_64-linux-gnu/libc.so.6(+0x2dbe7)[0x7f6d98fecbe7]
+/lib/x86_64-linux-gnu/libc.so.6(+0x2dc92)[0x7f6d98fecc92]
+build/ARM/gem5.opt(_ZN11SnoopFilter13lookupRequestEPK6PacketRK9SlavePort+0xf46)[0x15f5c06]
+build/ARM/gem5.opt(_ZN12CoherentXBar18recvAtomicBackdoorEP6PacketsPP11MemBackdoor+0x118)[0x15bb218]
+build/ARM/gem5.opt(_ZN8FISystem7readMemEm+0x215)[0xceedb5]
+build/ARM/gem5.opt(_ZN7CacheFI7executeEv+0xe1)[0xcfa051]
+build/ARM/gem5.opt(_ZN15AtomicSimpleCPU4tickEv+0x650)[0x245f690]
+build/ARM/gem5.opt(_ZN10EventQueue10serviceOneEv+0xc5)[0x234c805]
+build/ARM/gem5.opt(_Z9doSimLoopP10EventQueue+0x50)[0x236a2f0]
+build/ARM/gem5.opt(_Z8simulatem+0xd1b)[0x236b3db]
+build/ARM/gem5.opt[0x16eca29]
+build/ARM/gem5.opt[0xd68609]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x7852)[0x7f6d9a8a97b2]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f6d9a9e011c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f6d9a8a8f5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f6d9a9e011c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f6d9a8a8f5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f6d9a9e011c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f6d9a8a8f5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f6d9a9e011c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCode+0x19)[0x7f6d9a8a1de9]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x613b)[0x7f6d9a8a809b]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f6d9a9e011c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6ffd)[0x7f6d9a8a8f5d]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x85c)[0x7f6d9a9e011c]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyEval_EvalCode+0x19)[0x7f6d9a8a1de9]
+/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0(PyRun_StringFlags+0x76)[0x7f6d9a91c236]
+--- END LIBC BACKTRACE ---

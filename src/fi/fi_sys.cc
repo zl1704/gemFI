@@ -158,7 +158,7 @@ void LRUCache::updateCache(Addr addr, uint32_t data)
 {
 
     Entry *p;
-    // 每一次miss 从内存中预读8B数据
+    // 每一次miss 从内存中预读8*4B数据
     while (size() >= (_capacity - 8))
     {
         p = rList.head->next;

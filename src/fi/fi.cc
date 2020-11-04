@@ -16,39 +16,62 @@
 using namespace std;
 using namespace util;
 
-void FILogger::addInfo(string key, string value)
+bool FILogger::addInfo(string key, string value)
 {
-    info.insert(pair<string, string>(key, value));
+
+    auto it = info.find(key);
+    if (it != info.end())
+    {
+        it->second.push_back(value);
+        return false;
+    }
+    else
+    {
+        vector<string> set;
+        set.push_back(value);
+        info.insert(pair<string, vector<string>>(key, set));
+        return true;
+    }
 }
 void FILogger::dump()
 {
 
-    for (auto it : info)
-    {
-        cout << "\t" << setw(8) << it.first << " : " << it.second << endl;
-    }
+    dump(std::cout);
 }
 void FILogger::dump(string filename)
 {
+
     std::ofstream file;
     file.open(filename);
+    dump(file);
+}
+void FILogger::dump(ostream &os)
+{
+
     for (auto key : keyArr)
     {
-
         auto it = info.find(key);
-        if (it != info.end())
-            file << "\t" << setw(8) << it->first << " : " << it->second << endl;
-    }
+        if (it == info.end())
+            continue;
 
-    // for (auto it : info)
-    // {
-    //     file << "\t" << setw(8) << it.first << " : " << it.second << endl;
-    // }
+        os << "\t" << setw(8) << it->first << " : ";
+        if (it->second.size() > 1)
+            os << "[ ";
+        for (auto e : it->second)
+        {
+
+            os << e << " ";
+        }
+        if (it->second.size() > 1)
+            os << "]";
+        os << endl;
+    }
 }
+
 FaultInject *FaultInject::create(IniReader *config, FISystem *fiSystem)
 {
     FaultInject *fi = nullptr;
-    string fipos = config->getValue("GLOBAL", "fipos");
+    string fipos = config->getValue("GLOBAL", "section");
     if (fipos == "REG")
         fi = new REGFI(fiSystem, config);
     else if (fipos == "CU")
@@ -74,9 +97,11 @@ FaultInject *FaultInject::create(IniReader *config, FISystem *fiSystem)
 FaultInject::FaultInject(FISystem *_fiSystem, IniReader *config) : fiSystem(_fiSystem)
 {
     random = fiType(config->getValue("GLOBAL", "fitype")) == RANDOM ? true : false;
-    fcount = strToNum<uint8_t>(config->getValue("GLOBAL", "FN"));
+    to_number<uint8_t>(config->getValue("GLOBAL", "fcount"), fcount);
     if (!fcount)
         fcount = 1;
+    printf("fcount :%d\n", fcount);
+    fcount = fcount > 3 ? 3 : fcount;
     ranPickFun();
     if (!random)
         readFLData(config);
@@ -147,6 +172,16 @@ bool FaultInject::ranTrigger(uint64_t from, uint64_t to, uint64_t cur, uint32_t 
     else
         return (cur >= genRan(from, to)) && (cur >= genRan(from, to));
 }
+//多位翻转
+uint64_t FaultInject::mflip(uint64_t data, std::vector<uint8_t> ids)
+{
+    for (uint8_t index : ids)
+    {
+        data = flip(data, index);
+    }
+    return data;
+}
+
 uint64_t FaultInject::flip(uint64_t data, uint8_t pos)
 {
     data ^= 1 << pos;
@@ -160,14 +195,16 @@ uint64_t FaultInject::ranFlip(uint64_t data, uint8_t size, uint8_t fc)
 }
 uint64_t FaultInject::ranFlip(uint64_t data, uint8_t from, uint8_t to, uint8_t fc)
 {
-    uint8_t fset = 0;
+    // uint8_t fset = 0;
     uint8_t fd = 0;
+
+    fd = genRan(from, to - fc);
+    data = flip(data, fd);
+    fc--;
     while (fc)
     {
-        fd = genRan(from, to);
-        if (bits(fset, fd))
-            continue;
-        insertBits(fset, fd, 1);
+
+        fd++;
         fc--;
         data = flip(data, fd);
     }
@@ -216,7 +253,7 @@ VarFI::VarFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, conf
         var = function->findVar(var_name);
     if (!var)
         var = fiSystem->getVar("", var_name);
-    logger.addInfo("FIPos", "VAR");
+    logger.addInfo("Section", "VAR");
 }
 
 void VarFI::execute()
@@ -245,7 +282,7 @@ void VarFI::execute()
 REGFI::REGFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
     reg_index = -1;
-    logger.addInfo("FIPos", "Register");
+    logger.addInfo("Section", "Register");
     string reg = fiSystem->config->getValue("GLOBAL", "reg");
     if (reg != "")
         reg_index = string2RegIndex(reg);
@@ -272,26 +309,67 @@ void REGFI::execute()
     if (!checkExec())
         return;
 
-    uint8_t ri;
-    if (reg_index >= 0 && reg_index < 16)
-        ri = reg_index;
-    else
-        ri = genRan(0, 15);
     uint32_t rVal;
-    if (ri != 15)
-        rVal = fiSystem->readReg((IntRegIndex)ri);
-    else
-        rVal = (uint32_t)fiSystem->thread->instAddr();
-    uint32_t fVal = ranFlip(rVal, 32, fcount);
 
-    DPRINTF(REGFI, "REGFI INFO: ,REG : %d , Before Val: 0x%x , After Val: 0x%x \n ", ri, rVal, fVal);
-    if (ri != 15)
-        fiSystem->writeReg((IntRegIndex)ri, fVal);
+    //指定寄存器
+    if (reg_index >= 0)
+    {
+
+        if (reg_index != 15)
+            rVal = fiSystem->readReg((IntRegIndex)reg_index);
+        else
+            rVal = (uint32_t)fiSystem->thread->instAddr();
+
+        uint32_t fVal = ranFlip(rVal, 32, fcount);
+
+        logger.addInfo("Floc", csprintf("R%d", reg_index));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+    }
     else
-        fiSystem->thread->pcState().set(fVal);
-    logger.addInfo("Section", csprintf("R%d", ri));
-    logger.addInfo("P-FI", csprintf("%x", rVal));
-    logger.addInfo("A-FI", csprintf("%x", fVal));
+    {
+        //随机方式
+        uint8_t ri = genRan(0, 15 - fcount);
+
+        std::vector<InjectEntry> injects = MBU::genEntries(ri, fcount, 1);
+
+        for (InjectEntry e : injects)
+        {
+            ri = e._addr;
+            if (ri != 15)
+                rVal = fiSystem->readReg((IntRegIndex)ri);
+            else
+                rVal = (uint32_t)fiSystem->thread->instAddr();
+            uint32_t fVal = mflip(rVal, e.fids);
+            if (ri != 15)
+                fiSystem->writeReg((IntRegIndex)ri, fVal);
+            else
+                fiSystem->thread->pcState().set(fVal);
+            logger.addInfo("Floc", csprintf("R%d", ri));
+            logger.addInfo("P-FI", csprintf("%x", rVal));
+            logger.addInfo("A-FI", csprintf("%x", fVal));
+        }
+    }
+
+    // if (reg_index >= 0 && reg_index < 16)
+    //     ri = reg_index;
+    // else
+    //     ri = genRan(0, 15-fcount);
+
+    // if (ri != 15)
+    //     rVal = fiSystem->readReg((IntRegIndex)ri);
+    // else
+    //     rVal = (uint32_t)fiSystem->thread->instAddr();
+    // uint32_t fVal = ranFlip(rVal, 32, fcount);
+
+    // DPRINTF(REGFI, "REGFI INFO: ,REG : %d , Before Val: 0x%x , After Val: 0x%x \n ", ri, rVal, fVal);
+    // if (ri != 15)
+    //     fiSystem->writeReg((IntRegIndex)ri, fVal);
+    // else
+    //     fiSystem->thread->pcState().set(fVal);
+    // logger.addInfo("Floc", csprintf("R%d", ri));
+    // logger.addInfo("P-FI", csprintf("%x", rVal));
+    // logger.addInfo("A-FI", csprintf("%x", fVal));
 
     finish = true;
 }
@@ -299,7 +377,7 @@ void REGFI::execute()
 MemFI::MemFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
     fiSystem->memRecords.resize(-1);
-    logger.addInfo("FIPos", "Mem");
+    logger.addInfo("Section", "Mem");
 }
 
 void MemFI::execute()
@@ -310,18 +388,32 @@ void MemFI::execute()
     // fiSystem->memCache.dump();
     // fiSystem->memRecords.dump();
     std::pair<Addr, uint32_t> datap = fiSystem->memRecords.get(ran);
-    uint32_t fVal = ranFlip(datap.second, 32, fcount);
 
-    fiSystem->writeMem(datap.first, fVal);
-    DPRINTF(MEMFI, "MEMFI INFO: Mem Addr : 0x%x , Before Data : 0x%x , After Data: 0x%x\n", datap.first, datap.second, fVal);
+    std::vector<InjectEntry> injects = MBU::genEntries(datap.first, fcount, 4);
 
-    fiSystem->memRecords.dump();
+    for (InjectEntry e : injects)
+    {
+        uint32_t addr = e._addr;
+        uint32_t data = fiSystem->readMem(addr);
+        uint32_t fVal = mflip(data, e.fids);
+        fiSystem->writeMem(addr, fVal);
+        logger.addInfo("Addr", csprintf("%x", addr));
+        logger.addInfo("P-FI", csprintf("%x", data));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+    }
+
+    // uint32_t fVal = ranFlip(datap.second, 32, fcount);
+
+    // fiSystem->writeMem(datap.first, fVal);
+    // DPRINTF(MEMFI, "MEMFI INFO: Mem Addr : 0x%x , Before Data : 0x%x , After Data: 0x%x\n", datap.first, datap.second, fVal);
+
+    // fiSystem->memRecords.dump();
 
     finish = true;
 
-    logger.addInfo("Addr", csprintf("%x", datap.first));
-    logger.addInfo("P-FI", csprintf("%x", datap.second));
-    logger.addInfo("A-FI", csprintf("%x", fVal));
+    // logger.addInfo("Addr", csprintf("%x", datap.first));
+    // logger.addInfo("P-FI", csprintf("%x", datap.second));
+    // logger.addInfo("A-FI", csprintf("%x", fVal));
 }
 
 CUFI::CUFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
@@ -358,8 +450,9 @@ DpuFI::DpuFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, conf
 {
     isRd = false;
     printFlag = false;
+    log_flag = false;
     init();
-    logger.addInfo("FIPos", "DPU");
+    logger.addInfo("Section", "DPU");
 }
 
 void DpuFI::init()
@@ -458,7 +551,7 @@ void DpuFI::fiOpcode()
     inst = insertBits(inst, 24, 20, new_op);
     DPRINTF(DPUFI, "DpuFI fiOpcode INFO : After execute instruction: %x, op : %s\n", inst, opName(new_op).c_str());
 
-    logger.addInfo("Section", "Op");
+    logger.addInfo("Floc", "Op");
     logger.addInfo("P-FI", csprintf("%x", old_op) + "-" + opName(old_op));
     logger.addInfo("A-FI", csprintf("%x", new_op) + "-" + opName(new_op));
 }
@@ -474,7 +567,7 @@ void DpuFI::fiRn()
     uint64_t frnv = ranFlip(rnv, 32, fcount);
     fiSystem->writeReg((IntRegIndex)rn, rnv);
     DPRINTF(DPUFI, "DpuFI fiRn INFO : After execute instruction: %x\n", inst);
-    logger.addInfo("Section", csprintf("Rn-R%d", rn));
+    logger.addInfo("Floc", csprintf("Rn-R%d", rn));
     logger.addInfo("P-FI", csprintf("%x", rnv));
     logger.addInfo("A-FI", csprintf("%x", frnv));
 }
@@ -512,7 +605,7 @@ void DpuFI::fiRROp2()
         uint32_t new_val = ranFlip(rVal, 32, fcount);
         DPRINTF(DPUFI, "DpuFI RR-Inst INFO : After execute R%d : %x \n", Rm, new_val);
         fiSystem->writeReg((IntRegIndex)Rm, new_val);
-        logger.addInfo("Section", csprintf("Rm-R%d", Rm));
+        logger.addInfo("Floc", csprintf("Rm-R%d", Rm));
         logger.addInfo("P-FI", csprintf("%x", rVal));
         logger.addInfo("A-FI", csprintf("%x", new_val));
     }
@@ -521,7 +614,7 @@ void DpuFI::fiRROp2()
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Op2 INFO : Before execute : %x\n", bits(inst, 6, 5));
         inst = ranFlip(inst, 5, 6, 1);
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Op2 INFO : After execute : %x\n", bits(inst, 6, 5));
-        logger.addInfo("Section", "Op2");
+        logger.addInfo("Floc", "Op2");
         logger.addInfo("P-FI", csprintf("%x", bits(fiSystem->getCPU()->inst, 6, 5)));
         logger.addInfo("A-FI", csprintf("%x", bits(inst, 6, 5)));
     }
@@ -531,7 +624,7 @@ void DpuFI::fiRROp2()
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Imm INFO : Before execute : %x\n", bits(inst, 11, 7));
         inst = ranFlip(inst, 7, 11, 1);
         DPRINTF(DPUFI, "DpuFI RR-Inst Change Imm INFO : After execute : %x\n", bits(inst, 11, 7));
-        logger.addInfo("Section", "Imm");
+        logger.addInfo("Floc", "Imm");
         logger.addInfo("P-FI", csprintf("%x", bits(fiSystem->getCPU()->inst, 11, 7)));
         logger.addInfo("A-FI", csprintf("%x", bits(inst, 11, 7)));
     }
@@ -558,7 +651,7 @@ void DpuFI::fiRRSOp2()
         uint32_t new_val = ranFlip(rVal, 32, fcount);
         DPRINTF(DPUFI, "DpuFI RR-Inst INFO : After execute R%d : %x \n", Rm, new_val);
         fiSystem->writeReg((IntRegIndex)Rm, new_val);
-        logger.addInfo("Section", csprintf("Rm-R%d", Rm));
+        logger.addInfo("Floc", csprintf("Rm-R%d", Rm));
         logger.addInfo("P-FI", csprintf("%x", rVal));
         logger.addInfo("A-FI", csprintf("%x", new_val));
     }
@@ -567,7 +660,7 @@ void DpuFI::fiRRSOp2()
         DPRINTF(DPUFI, "DpuFI RRS-Inst Change Op2 INFO : Before execute : %x\n", bits(inst, 6, 5));
         inst = ranFlip(inst, 5, 6);
         DPRINTF(DPUFI, "DpuFI RRS-Inst Change Op2 INFO : After execute : %x\n", bits(inst, 6, 5));
-        logger.addInfo("Section", "Op2");
+        logger.addInfo("Floc", "Op2");
         logger.addInfo("P-FI", csprintf("%x", bits(fiSystem->getCPU()->inst, 6, 5)));
         logger.addInfo("A-FI", csprintf("%x", bits(inst, 6, 5)));
     }
@@ -583,7 +676,7 @@ void DpuFI::fiRRSOp2()
         uint32_t new_val = ranFlip(rVal, 32, fcount);
         DPRINTF(DPUFI, "DpuFI RRS-Inst INFO : After execute R%d : %x \n", Rs, new_val);
         fiSystem->writeReg((IntRegIndex)Rs, new_val);
-        logger.addInfo("Section", csprintf("Rs-R%d", Rs));
+        logger.addInfo("Floc", csprintf("Rs-R%d", Rs));
         logger.addInfo("P-FI", csprintf("%x", rVal));
         logger.addInfo("A-FI", csprintf("%x", new_val));
     }
@@ -721,10 +814,14 @@ void DpuFI::postExecute()
         fiSystem->writeReg((IntRegIndex)rd, rdv);
         DPRINTF(DPUFI, "DpuFI fiRd INFO : After execute  R%d  : %x \n", rd, frdv);
         isRd = false;
-        logger.addInfo("Section", csprintf("Rd-R%d", rd));
+        logger.addInfo("Floc", csprintf("Rd-R%d", rd));
         logger.addInfo("P-FI", csprintf("%x", rdv));
         logger.addInfo("A-FI", csprintf("%x", frdv));
+    }
+    if (finish && !log_flag)
+    {
         FaultInject::postExecute();
+        log_flag = true;
     }
 }
 
@@ -732,7 +829,7 @@ void DpuFI::postExecute()
 
 MpuFI::MpuFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
-    logger.addInfo("FIPos", "DPU");
+    logger.addInfo("Section", "DPU");
 }
 
 void MpuFI::execute()
@@ -790,7 +887,7 @@ void MpuFI::printTlb()
 PFUFI::PFUFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
 {
     printFlag = false;
-    logger.addInfo("FIPos", "PFU");
+    logger.addInfo("Section", "PFU");
 }
 
 void PFUFI::preExecute()
@@ -825,7 +922,7 @@ CacheFI::CacheFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, 
 
     fiSystem->memRecords.resize(256);
 
-    logger.addInfo("FIPos", "Cache");
+    logger.addInfo("Section", "Cache");
 }
 
 void CacheFI::execute()
@@ -834,12 +931,26 @@ void CacheFI::execute()
     if (!checkExec())
         return;
     uint32_t csize = fiSystem->memRecords.size();
-    uint8_t ran = genRan(csize - 100, csize - 1);
+    uint16_t ran = genRan(0, csize - 1);
     // fiSystem->memCache.dump();
     // fiSystem->memRecords.dump();
     std::pair<Addr, uint32_t> datap = fiSystem->memRecords.get(ran);
     if (!datap.second)
         datap.second = fiSystem->readMem(datap.first);
+    // std::vector<InjectEntry> injects = MBU::genEntries(datap.first, fcount, 8);
+
+    // for (InjectEntry e : injects)
+    // {
+    //     uint32_t addr = e._addr;
+    //     uint32_t data = fiSystem->readMem(addr);
+    //     uint32_t fVal = mflip(data, e.fids);
+    //     fiSystem->writeMem(addr, fVal);
+
+    //     logger.addInfo("Addr", csprintf("%x", addr));
+    //     logger.addInfo("P-FI", csprintf("%x", data));
+    //     logger.addInfo("A-FI", csprintf("%x", fVal));
+    // }
+
     uint32_t fVal = ranFlip(datap.second, 32, fcount);
 
     fiSystem->writeMem(datap.first, fVal);
@@ -852,4 +963,81 @@ void CacheFI::execute()
     logger.addInfo("Addr", csprintf("%x", datap.first));
     logger.addInfo("P-FI", csprintf("%x", datap.second));
     logger.addInfo("A-FI", csprintf("%x", fVal));
+}
+
+std::vector<InjectEntry> MBU::genEntries(uint32_t addr, uint8_t count, uint32_t align)
+{
+
+    uint8_t ran = FaultInject::genRan(1, 3);
+
+    if (ran == 1)
+        return genVertical(addr, count, align);
+    else if (ran == 2)
+        return genHorizontall(addr, count, align);
+    else
+        return genL(addr, count, align);
+}
+//垂直方向
+std::vector<InjectEntry> MBU::genVertical(uint32_t addr, uint8_t count, uint32_t align)
+{
+    std::vector<InjectEntry> res;
+    uint8_t bi = FaultInject::genRan(0, 31);
+    res.push_back(InjectEntry(addr));
+    res[0].fids.push_back(bi);
+    count--;
+    if (!count)
+        return res;
+
+    res.push_back(InjectEntry(addr + align));
+    res[1].fids.push_back(bi);
+    count--;
+    if (!count)
+        return res;
+
+    res.push_back(InjectEntry(addr + align * 2));
+    res[2].fids.push_back(bi);
+    return res;
+}
+//水平
+std::vector<InjectEntry> MBU::genHorizontall(uint32_t addr, uint8_t count, uint32_t align)
+{
+    std::vector<InjectEntry> res;
+    uint8_t bi = FaultInject::genRan(0, 31 - count);
+    res.push_back(InjectEntry(addr));
+    res[0].fids.push_back(bi);
+    count--;
+    if (!count)
+        return res;
+
+    // res.push_back(InjectEntry(addr));
+    res[0].fids.push_back(bi + 1);
+    count--;
+    if (!count)
+        return res;
+
+    // res.push_back(InjectEntry(addr));
+    res[1].fids.push_back(bi + 2);
+    return res;
+}
+
+//L
+std::vector<InjectEntry> MBU::genL(uint32_t addr, uint8_t count, uint32_t align)
+{
+    std::vector<InjectEntry> res;
+    uint8_t bi = FaultInject::genRan(0, 30);
+    res.push_back(InjectEntry(addr));
+    res[0].fids.push_back(bi);
+    count--;
+    if (!count)
+        return res;
+
+    res.push_back(InjectEntry(addr + align));
+    res[1].fids.push_back(bi + 1);
+    count--;
+    if (!count)
+        return res;
+
+    // res.push_back(InjectEntry(addr + align));
+    res[1].fids.push_back(bi);
+    return res;
 }
