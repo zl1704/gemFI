@@ -894,22 +894,41 @@ void PFUFI::preExecute()
 {
     if (!checkExec())
         return;
-    AtomicSimpleCPU *cpu = fiSystem->getCPU();
-    MachInst old_inst = cpu->inst;
-    DPRINTF(PFUFI, "PFUFI INFO : Before execute instruction: %x\n", cpu->inst);
-    cpu->inst = ranFlip(cpu->inst, 32, fcount);
-    DPRINTF(PFUFI, "PFUFI INFO : After execute instruction: %x\n", cpu->inst);
+
+    uint32_t ran = genRan(0, 7-fcount);
+
+    Addr instAddr = fiSystem->thread->instAddr();
+
+    std::vector<InjectEntry> injects = MBU::genEntries(instAddr+ran*4, fcount, 4);
+    for (InjectEntry e : injects)
+    {
+        uint32_t addr = e._addr;
+        uint32_t data = fiSystem->readInst(addr);
+        uint32_t fVal = mflip(data, e.fids);
+        fiSystem->writeInst(addr, fVal);
+        logger.addInfo("Offset", csprintf("%d", (addr-instAddr)/4));
+        logger.addInfo("P-FI", csprintf("%x", data));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+    }
+
+    // fiSystem->writeInst(instAddr,inst+4);
+    // AtomicSimpleCPU *cpu = fiSystem->getCPU();
+    // MachInst old_inst = cpu->inst;
+    // DPRINTF(PFUFI, "PFUFI INFO : Before execute instruction: %x\n", cpu->inst);
+    // cpu->inst = ranFlip(cpu->inst, 32, fcount);
+    // DPRINTF(PFUFI, "PFUFI INFO : After execute instruction: %x\n", cpu->inst);
     finish = true;
     printFlag = true;
 
-    logger.addInfo("P-FI", csprintf("%x", old_inst));
-    logger.addInfo("A-FI", csprintf("%x", cpu->inst));
+    // logger.addInfo("P-FI", csprintf("%x", old_inst));
+    // logger.addInfo("A-FI", csprintf("%x", cpu->inst));
 }
 
 void PFUFI::execute()
 {
     if (printFlag)
     {
+
         DPRINTF(PFUFI, "PFUFI INFO : After FI inst is  %s\n", fiSystem->getCPU()->curStaticInst->getName());
         printFlag = false;
     }

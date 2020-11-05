@@ -35,8 +35,6 @@ using namespace util;
 
 // }
 
-
-
 void LFUCache::resort()
 {
     while (!queue.empty())
@@ -302,6 +300,7 @@ FISystem::FISystem(AtomicSimpleCPU *_cpu) : cpu(_cpu)
     xc = cpu->threadInfo[cpu->curThread];
     thread = xc->thread;
 
+    iwrite_req = std::make_shared<Request>();
     pTable = thread->getProcessPtr()->pTable;
     initFI();
     memRecords.setFISys(this);
@@ -488,7 +487,7 @@ void FISystem::collectInfo()
 }
 
 //解码
-void FISystem::decode()
+void FISystem::preProcess()
 {
     if (!enable)
         return;
@@ -572,6 +571,35 @@ uint64_t FISystem::readMem(Addr addr)
     memBarrier(addr, (uint8_t *)tdata, 4, false);
     return res;
 }
+
+//读写指令
+uint32_t FISystem::readInst(Addr addr)
+{
+    uint32_t inst;
+    cpu->ifetch_req->taskId(cpu->taskId());
+    cpu->setupFetchRequest(cpu->ifetch_req);
+    Fault fault = thread->itb->translateAtomic(cpu->ifetch_req, thread->getTC(),
+                                               BaseTLB::Execute);
+    Packet ifetch_pkt = Packet(cpu->ifetch_req, MemCmd::ReadReq);
+    ifetch_pkt.dataStatic(&inst);
+
+    cpu->sendPacket(cpu->icachePort, &ifetch_pkt);
+    return inst;
+
+}
+void FISystem::writeInst(Addr addr, uint32_t inst)
+{
+    // cpu->ifetch_req->taskId(cpu->taskId());
+    const RequestPtr& req = iwrite_req;
+    req->setVirt(0, addr, sizeof(MachInst), Request::ACQUIRE,
+                cpu->instMasterId(), thread->pcState().instAddr());
+    Fault fault = thread->itb->translateAtomic(req, thread->getTC(),
+                                               BaseTLB::Execute);
+    Packet iwrite_pkt = Packet(req, MemCmd::WriteReq);
+    iwrite_pkt.dataStatic(&inst);
+    cpu->sendPacket(cpu->icachePort, &iwrite_pkt);
+}
+
 void FISystem::writeReg(IntRegIndex reg, RegVal data)
 {
     thread->setIntReg(reg, data);

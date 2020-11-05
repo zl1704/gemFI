@@ -23,7 +23,7 @@ private:
     void dump(std::ostream& os);
     std::map<std::string, std::vector<std::string>> info;
     //按优先级排个序
-    std::vector<std::string> keyArr = {"FIType", "Section", "FIFun", "Line", "Fcount", "InstType","Floc", "Addr", "P-FI", "A-FI"};
+    std::vector<std::string> keyArr = {"FIType", "Section", "FIFun", "Line", "Fcount", "InstType","Floc","Offset", "Addr", "P-FI", "A-FI"};
 };
 
 typedef enum
@@ -210,7 +210,8 @@ public:
     PFUFI(FISystem *fiSystem, IniReader *config);
 
 protected:
-    bool doFIProcess() { return true; }
+    bool doFIProcess() { return true; };
+    static const uint8_t inst_queue_size = 8;
 };
 
 //cache

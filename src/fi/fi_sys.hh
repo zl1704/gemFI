@@ -148,13 +148,15 @@ class FISystem
     friend class REGFI;
     friend class MemFI;
     friend class MpuFI;
+    friend class PFUFI;
+
     friend class CacheFI;
 
 public:
     bool FIDebug;
     static FISystem *create(AtomicSimpleCPU *cpu);
 
-    void decode();
+    void preProcess();
     void process();
     void postProcess();
     void close();
@@ -173,6 +175,14 @@ public:
     RegVal readReg(IntRegIndex reg);
     void memBarrier(Addr addr, uint8_t *data, uint32_t size, bool is_write);
 
+
+    //读写指令
+    uint32_t readInst(Addr addr);
+    void writeInst(Addr addr , uint32_t inst);
+
+
+
+
     //递归深度
     uint32_t getRecurDepth();
     void dumpFrame();
@@ -186,6 +196,8 @@ private:
     SimpleExecContext *xc;
     SimpleThread *thread;
     EmulationPageTable *pTable; //page table
+    RequestPtr iwrite_req;
+
 
     //enable flag
     bool enable;

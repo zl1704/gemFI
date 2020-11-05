@@ -721,6 +721,8 @@ void AtomicSimpleCPU::tick()
             return;
         }
 
+        fiSystem->preProcess();
+
         Fault fault = NoFault;
 
         TheISA::PCState pcState = thread->pcState();
@@ -763,7 +765,7 @@ void AtomicSimpleCPU::tick()
                 // into the CPU object's inst field.
                 //}
             }
-            fiSystem->decode();
+            
             preExecute(); //decode
             fiSystem->process();
             Tick stall_ticks = 0;
