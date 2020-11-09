@@ -982,9 +982,9 @@ void DebugInfo::init(std::string file)
 {
 
     ifs.open(file);
-    if (ifs.bad())
+    if (!ifs.is_open())
     {
-        fprintf(stderr, "fail to open file : %s", file.c_str());
+        fprintf(stderr, "DebugInfo fail to open file : %s\n", file.c_str());
         exit(101);
     }
 

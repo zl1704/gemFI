@@ -201,6 +201,8 @@ private:
 
     //enable flag
     bool enable;
+    std::string work_dir;
+    std::string config_file;
 
     //debug info
     DebugInfo *di;
@@ -222,6 +224,10 @@ private:
     void collectInfo();
 
     bool initFI();
+    //find config and set work dir
+    bool initEnv();
+
+
 };
 
 #endif

@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "fi/fi_sys.hh"
 #include "base/trace.hh"
 #include "base/loader/symtab.hh"
@@ -5,6 +6,8 @@
 #include "fi/util.hh"
 #include "debug/FISYS.hh"
 #include "debug/MEMFI.hh"
+
+
 using namespace std;
 using namespace util;
 // void PCInfo::insert(std::string name,Addr pc){
@@ -284,14 +287,12 @@ FISystem::FISystem(AtomicSimpleCPU *_cpu) : cpu(_cpu)
     mcu = nullptr;
     frame = nullptr;
     memRecords.resize(-1);
-    string config_file = "configs/fi/fi.ini";
-
+    // string config_file = "configs/fi/fi.ini";
+    
     config = new IniReader();
-    if (!config->readFromFile(config_file))
-    {
-        cprintf("config file: %s does not found\n", config_file);
-        exit(101);
-    }
+    initEnv();
+
+
     string dval = config->getValue("DEBUG", "compile");
     if (dval != "")
         util::debug = strToNum<uint32_t>(dval);
@@ -305,6 +306,27 @@ FISystem::FISystem(AtomicSimpleCPU *_cpu) : cpu(_cpu)
     initFI();
     memRecords.setFISys(this);
 }
+
+/**
+ *  找fi.ini 
+ *  
+ * 
+ * 
+ * */
+bool FISystem::initEnv(){
+
+    work_dir = getcwd(NULL,0);
+
+    if (!config->readFromFile("fi.ini"))
+    {
+        cprintf("config file: %s/%s does not found\n", work_dir,"fi.ini");
+        exit(101);
+    }
+    config_file = csprintf("%s/%s",work_dir,"fi.ini");
+
+    return true;
+}
+
 
 bool FISystem::initFI()
 {

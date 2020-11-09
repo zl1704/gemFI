@@ -1,7 +1,7 @@
 	  FIType : Random 
-	 Section : PFU 
+	 Section : Register 
 	   FIFun : quick_sort 
 	  Fcount : 3 
-	  Offset : [ 3 4 5 ]
-	    P-FI : [ 9b549202 9b549202 9b549202 ]
-	    A-FI : [ 9a549202 9a549202 9a549202 ]
+	    Floc : R1 
+	    P-FI : 7cc98 
+	    A-FI : 7007cc98 
