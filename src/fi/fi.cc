@@ -237,6 +237,8 @@ bool FaultInject::checkExec()
 
 void FaultInject::postExecute()
 {
+    if(name()=="FaultInject")
+        return ;
 
     string file = fiSystem->config->getValue("GLOBAL", "log");
     if (file != "")
@@ -262,7 +264,7 @@ void VarFI::execute()
     if (!var || !checkExec())
         return;
     Frame *frame = fiSystem->getFrame();
-    DPRINTF(VARFI, "REGFI INFO: , name = %s \n", var->getName());
+    DPRINTF(VARFI, "VarFI INFO: , name = %s \n", var->getName());
     var->print();
     if (var->getScope() == GLOBAL)
     {
@@ -286,6 +288,8 @@ REGFI::REGFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, conf
     string reg = fiSystem->config->getValue("GLOBAL", "reg");
     if (reg != "")
         reg_index = string2RegIndex(reg);
+    if(reg_index>15)
+        reg_index = -1;
 }
 
 int REGFI::string2RegIndex(string reg)
