@@ -55,6 +55,8 @@ protected:
     //日志
     FILogger logger;
 
+    bool  log_flag{false};
+
     FaultInject(FISystem *_fiSystem, IniReader *config);
     bool checkExec();
     void readFLData(IniReader *confi);
@@ -177,7 +179,7 @@ private:
     std::vector<uint32_t> aluops;
     ArmISA::MachInst inst;
 
-    bool log_flag;
+    
 };
 
 class MpuFI : public FaultInject

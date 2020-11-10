@@ -237,15 +237,18 @@ bool FaultInject::checkExec()
 
 void FaultInject::postExecute()
 {
-    if(name()=="FaultInject")
-        return ;
+    if (!log_flag || name() == "FaultInject")
+        return;
 
     string file = fiSystem->config->getValue("GLOBAL", "log");
+
     if (file != "")
     {
 
         logger.dump(file);
     }
+
+    log_flag = false;
 }
 
 VarFI::VarFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
@@ -277,7 +280,7 @@ void VarFI::execute()
         RegVal sp = frame->getSpRegVal();
         fiSystem->writeMem(sp + var->getLoc(), 100);
     }
-
+    log_flag = true;
     finish = true;
 }
 
@@ -288,7 +291,7 @@ REGFI::REGFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, conf
     string reg = fiSystem->config->getValue("GLOBAL", "reg");
     if (reg != "")
         reg_index = string2RegIndex(reg);
-    if(reg_index>15)
+    if (reg_index > 15)
         reg_index = -1;
 }
 
@@ -374,7 +377,7 @@ void REGFI::execute()
     // logger.addInfo("Floc", csprintf("R%d", ri));
     // logger.addInfo("P-FI", csprintf("%x", rVal));
     // logger.addInfo("A-FI", csprintf("%x", fVal));
-
+    log_flag = true;
     finish = true;
 }
 
@@ -414,7 +417,7 @@ void MemFI::execute()
     // fiSystem->memRecords.dump();
 
     finish = true;
-
+    log_flag = true;
     // logger.addInfo("Addr", csprintf("%x", datap.first));
     // logger.addInfo("P-FI", csprintf("%x", datap.second));
     // logger.addInfo("A-FI", csprintf("%x", fVal));
@@ -436,7 +439,7 @@ void CUFI::preExecute()
     DPRINTF(CUFI, "CUFI INFO : After execute instruction: %x\n", cpu->inst);
     finish = true;
     printFlag = true;
-
+    log_flag = true;
     logger.addInfo("P-FI", csprintf("%x", inst));
     logger.addInfo("A-FI", csprintf("%x", cpu->inst));
 }
@@ -454,7 +457,7 @@ DpuFI::DpuFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, conf
 {
     isRd = false;
     printFlag = false;
-    log_flag = false;
+
     init();
     logger.addInfo("Section", "DPU");
 }
@@ -793,6 +796,7 @@ void DpuFI::preExecute()
     cpu->inst = inst;
     printFlag = true;
     finish = true;
+    log_flag = true;
 }
 void DpuFI::execute()
 {
@@ -822,11 +826,8 @@ void DpuFI::postExecute()
         logger.addInfo("P-FI", csprintf("%x", rdv));
         logger.addInfo("A-FI", csprintf("%x", frdv));
     }
-    if (finish && !log_flag)
-    {
-        FaultInject::postExecute();
-        log_flag = true;
-    }
+
+    FaultInject::postExecute();
 }
 
 // ============MpuFI===================
@@ -842,6 +843,7 @@ void MpuFI::execute()
         return;
     doFIProcess();
     finish = true;
+    log_flag = true;
 }
 
 bool MpuFI::doFIProcess()
@@ -899,18 +901,18 @@ void PFUFI::preExecute()
     if (!checkExec())
         return;
 
-    uint32_t ran = genRan(0, 7-fcount);
+    uint32_t ran = genRan(0, 7 - fcount);
 
     Addr instAddr = fiSystem->thread->instAddr();
 
-    std::vector<InjectEntry> injects = MBU::genEntries(instAddr+ran*4, fcount, 4);
+    std::vector<InjectEntry> injects = MBU::genEntries(instAddr + ran * 4, fcount, 4);
     for (InjectEntry e : injects)
     {
         uint32_t addr = e._addr;
         uint32_t data = fiSystem->readInst(addr);
         uint32_t fVal = mflip(data, e.fids);
         fiSystem->writeInst(addr, fVal);
-        logger.addInfo("Offset", csprintf("%d", (addr-instAddr)/4));
+        logger.addInfo("Offset", csprintf("%d", (addr - instAddr) / 4));
         logger.addInfo("P-FI", csprintf("%x", data));
         logger.addInfo("A-FI", csprintf("%x", fVal));
     }
@@ -982,7 +984,7 @@ void CacheFI::execute()
     // fiSystem->memRecords.dump();
 
     finish = true;
-
+    log_flag = true;
     logger.addInfo("Addr", csprintf("%x", datap.first));
     logger.addInfo("P-FI", csprintf("%x", datap.second));
     logger.addInfo("A-FI", csprintf("%x", fVal));
