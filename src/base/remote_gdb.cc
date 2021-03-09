@@ -343,7 +343,7 @@ void
 BaseRemoteGDB::listen()
 {
     if (ListenSocket::allDisabled()) {
-        warn_once("Sockets disabled, not accepting gdb connections");
+       // warn_once("Sockets disabled, not accepting gdb connections");
         return;
     }
 
@@ -355,8 +355,8 @@ BaseRemoteGDB::listen()
     connectEvent = new ConnectEvent(this, listener.getfd(), POLLIN);
     pollQueue.schedule(connectEvent);
 
-    ccprintf(cerr, "%d: %s: listening for remote gdb on port %d\n",
-             curTick(), name(), _port);
+    // ccprintf(cerr, "%d: %s: listening for remote gdb on port %d\n",
+    //          curTick(), name(), _port);
 }
 
 void

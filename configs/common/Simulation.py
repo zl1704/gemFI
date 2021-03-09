@@ -722,8 +722,8 @@ def run(options, root, testsys, cpu_class):
     else:
         if options.fast_forward:
             m5.stats.reset()
-        print("**** REAL SIMULATION ****")
-
+        # print("**** REAL SIMULATION ****")
+        # print("****    ****")
         # If checkpoints are being taken, then the checkpoint instruction
         # will occur in the benchmark code it self.
         if options.repeat_switch and maxtick > options.repeat_switch:

@@ -333,22 +333,22 @@ def main(*args):
         options.usage(2)
 
     verbose = options.verbose - options.quiet
-    if verbose >= 0:
-        print("gem5 Simulator System.  http://gem5.org")
-        print(brief_copyright)
-        print()
+    # if verbose >= 0:
+    #     print("gem5 Simulator System.  http://gem5.org")
+    #     print(brief_copyright)
+    #     print()
 
-        print("gem5 compiled %s" % defines.compileDate)
+    #     print("gem5 compiled %s" % defines.compileDate)
 
-        print("gem5 started %s" %
-              datetime.datetime.now().strftime("%b %e %Y %X"))
-        print("gem5 executing on %s, pid %d" %
-              (socket.gethostname(), os.getpid()))
+    #     print("gem5 started %s" %
+    #           datetime.datetime.now().strftime("%b %e %Y %X"))
+    #     print("gem5 executing on %s, pid %d" %
+    #           (socket.gethostname(), os.getpid()))
 
-        # in Python 3 pipes.quote() is moved to shlex.quote()
-        import pipes
-        print("command line:", " ".join(map(pipes.quote, sys.argv)))
-        print()
+    #     # in Python 3 pipes.quote() is moved to shlex.quote()
+    #     import pipes
+    #     #print("command line:", " ".join(map(pipes.quote, sys.argv)))
+    #     print()
 
     # check to make sure we can find the listed script
     if not arguments or not os.path.isfile(arguments[0]):
@@ -372,7 +372,7 @@ def main(*args):
         m5.disableAllListeners()
     elif options.listener_mode == "auto":
         if not isInteractive():
-            inform("Standard input is not a terminal, disabling listeners.")
+            #inform("Standard input is not a terminal, disabling listeners.")
             m5.disableAllListeners()
     elif options.listener_mode == "on":
         pass

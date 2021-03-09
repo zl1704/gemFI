@@ -100,7 +100,7 @@ FaultInject::FaultInject(FISystem *_fiSystem, IniReader *config) : fiSystem(_fiS
     to_number<uint8_t>(config->getValue("GLOBAL", "fcount"), fcount);
     if (!fcount)
         fcount = 1;
-    printf("fcount :%d\n", fcount);
+    line = -1;
     fcount = fcount > 3 ? 3 : fcount;
     ranPickFun();
     if (!random)
@@ -925,7 +925,7 @@ void PFUFI::preExecute()
     // DPRINTF(PFUFI, "PFUFI INFO : After execute instruction: %x\n", cpu->inst);
     finish = true;
     printFlag = true;
-
+    log_flag = true;
     // logger.addInfo("P-FI", csprintf("%x", old_inst));
     // logger.addInfo("A-FI", csprintf("%x", cpu->inst));
 }
@@ -1041,7 +1041,7 @@ std::vector<InjectEntry> MBU::genHorizontall(uint32_t addr, uint8_t count, uint3
         return res;
 
     // res.push_back(InjectEntry(addr));
-    res[1].fids.push_back(bi + 2);
+    res[0].fids.push_back(bi + 2);
     return res;
 }
 

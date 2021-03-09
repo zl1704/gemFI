@@ -105,7 +105,7 @@ fixClockFrequency()
     Int::ns = Int::us / 1000;
     Int::ps = Int::ns / 1000;
 
-    cprintf("Global frequency set at %d ticks per second\n", _ticksPerSecond);
+    //cprintf("Global frequency set at %d ticks per second\n", _ticksPerSecond);
 
     _clockFrequencyFixed = true;
 }
