@@ -1,0 +1,7 @@
+	  FIType : Random 
+	 Section : Bus 
+	   FIFun : test_read 
+	  Fcount : 1 
+	    Addr : befffd4c 
+	    P-FI : 0 
+	    A-FI : 100 

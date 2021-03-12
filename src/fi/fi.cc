@@ -13,6 +13,7 @@
 #include "debug/MPUFI.hh"
 #include "debug/PFUFI.hh"
 #include "debug/CACHEFI.hh"
+#include "cpu/exetrace.hh"
 using namespace std;
 using namespace util;
 
@@ -68,7 +69,7 @@ void FILogger::dump(ostream &os)
     }
 }
 
-FaultInject *FaultInject::create(IniReader *config, FISystem *fiSystem)
+FaultInject *FaultInject::create(IniManager *config, FISystem *fiSystem)
 {
     FaultInject *fi = nullptr;
     string fipos = config->getValue("GLOBAL", "section");
@@ -88,13 +89,17 @@ FaultInject *FaultInject::create(IniReader *config, FISystem *fiSystem)
         fi = new PFUFI(fiSystem, config);
     else if (fipos == "CACHE")
         fi = new CacheFI(fiSystem, config);
+    else if (fipos == "PROFILE")
+        fi = new Profiler(fiSystem, config);
+    else if (fipos == "BUS")
+        fi = new BusFI(fiSystem, config);
     else
         fi = new FaultInject(fiSystem, config);
 
     return fi;
 }
 
-FaultInject::FaultInject(FISystem *_fiSystem, IniReader *config) : fiSystem(_fiSystem)
+FaultInject::FaultInject(FISystem *_fiSystem, IniManager *config) : fiSystem(_fiSystem)
 {
     random = fiType(config->getValue("GLOBAL", "fitype")) == RANDOM ? true : false;
     to_number<uint8_t>(config->getValue("GLOBAL", "fcount"), fcount);
@@ -115,7 +120,7 @@ FaultInject::FaultInject(FISystem *_fiSystem, IniReader *config) : fiSystem(_fiS
     logger.addInfo("Fcount", to_string(fcount));
 };
 
-void FaultInject::readFLData(IniReader *config)
+void FaultInject::readFLData(IniManager *config)
 {
     file = config->getValue("FL", "file");
     string strval = config->getValue("FL", "line");
@@ -133,6 +138,12 @@ void FaultInject::readFLData(IniReader *config)
         function = fiSystem->findFunByLine(line);
     }
 }
+void FaultInject::InitProfile(std::string profile_file)
+{
+
+    programProfiler.FromFile(profile_file, fiSystem);
+}
+
 FITYPE FaultInject::fiType(string val)
 {
     if (val == "F")
@@ -211,6 +222,20 @@ uint64_t FaultInject::ranFlip(uint64_t data, uint8_t from, uint8_t to, uint8_t f
 
     return data;
 }
+bool FaultInject::inUserFun()
+{
+    Frame *frame = fiSystem->getFrame();
+    if (!frame)
+        return false;
+    return true;
+}
+Function *FaultInject::getCurFun()
+{
+    Frame *frame = fiSystem->getFrame();
+    if (!frame)
+        return nullptr;
+    return frame->getFun();
+}
 
 bool FaultInject::checkExec()
 {
@@ -237,6 +262,9 @@ bool FaultInject::checkExec()
 
 void FaultInject::postExecute()
 {
+}
+void FaultInject::Finish()
+{
     if (!log_flag || name() == "FaultInject")
         return;
 
@@ -251,7 +279,7 @@ void FaultInject::postExecute()
     log_flag = false;
 }
 
-VarFI::VarFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+VarFI::VarFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     string var_name = config->getValue("VAR", "name");
     if (function)
@@ -284,7 +312,7 @@ void VarFI::execute()
     finish = true;
 }
 
-REGFI::REGFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+REGFI::REGFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     reg_index = -1;
     logger.addInfo("Section", "Register");
@@ -318,44 +346,45 @@ void REGFI::execute()
 
     uint32_t rVal;
 
-    //指定寄存器
-    if (reg_index >= 0)
-    {
+    // //指定寄存器
+    // if (reg_index >= 0)
+    // {
 
-        if (reg_index != 15)
-            rVal = fiSystem->readReg((IntRegIndex)reg_index);
+    //     if (reg_index != 15)
+    //         rVal = fiSystem->readReg((IntRegIndex)reg_index);
+    //     else
+    //         rVal = (uint32_t)fiSystem->thread->instAddr();
+
+    //     uint32_t fVal = ranFlip(rVal, 32, fcount);
+
+    //     logger.addInfo("Floc", csprintf("R%d", reg_index));
+    //     logger.addInfo("P-FI", csprintf("%x", rVal));
+    //     logger.addInfo("A-FI", csprintf("%x", fVal));
+    // }
+
+    //随机方式
+    
+
+    uint8_t ri = genRan(0, 15 - fcount);
+    if(reg_index >= 0)
+        ri = reg_index;
+    std::vector<InjectEntry> injects = MBU::genEntries(ri, fcount, 1);
+
+    for (InjectEntry e : injects)
+    {
+        ri = e._addr;
+        if (ri != 15)
+            rVal = fiSystem->readReg((IntRegIndex)ri);
         else
             rVal = (uint32_t)fiSystem->thread->instAddr();
-
-        uint32_t fVal = ranFlip(rVal, 32, fcount);
-
-        logger.addInfo("Floc", csprintf("R%d", reg_index));
+        uint32_t fVal = mflip(rVal, e.fids);
+        if (ri != 15)
+            fiSystem->writeReg((IntRegIndex)ri, fVal);
+        else
+            fiSystem->thread->pcState().set(fVal);
+        logger.addInfo("Floc", csprintf("R%d", ri));
         logger.addInfo("P-FI", csprintf("%x", rVal));
         logger.addInfo("A-FI", csprintf("%x", fVal));
-    }
-    else
-    {
-        //随机方式
-        uint8_t ri = genRan(0, 15 - fcount);
-
-        std::vector<InjectEntry> injects = MBU::genEntries(ri, fcount, 1);
-
-        for (InjectEntry e : injects)
-        {
-            ri = e._addr;
-            if (ri != 15)
-                rVal = fiSystem->readReg((IntRegIndex)ri);
-            else
-                rVal = (uint32_t)fiSystem->thread->instAddr();
-            uint32_t fVal = mflip(rVal, e.fids);
-            if (ri != 15)
-                fiSystem->writeReg((IntRegIndex)ri, fVal);
-            else
-                fiSystem->thread->pcState().set(fVal);
-            logger.addInfo("Floc", csprintf("R%d", ri));
-            logger.addInfo("P-FI", csprintf("%x", rVal));
-            logger.addInfo("A-FI", csprintf("%x", fVal));
-        }
     }
 
     // if (reg_index >= 0 && reg_index < 16)
@@ -381,7 +410,7 @@ void REGFI::execute()
     finish = true;
 }
 
-MemFI::MemFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+MemFI::MemFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     fiSystem->memRecords.resize(-1);
     logger.addInfo("Section", "Mem");
@@ -423,7 +452,7 @@ void MemFI::execute()
     // logger.addInfo("A-FI", csprintf("%x", fVal));
 }
 
-CUFI::CUFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+CUFI::CUFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     printFlag = false;
 }
@@ -453,7 +482,7 @@ void CUFI::execute()
     }
 }
 
-DpuFI::DpuFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+DpuFI::DpuFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     isRd = false;
     printFlag = false;
@@ -832,7 +861,7 @@ void DpuFI::postExecute()
 
 // ============MpuFI===================
 
-MpuFI::MpuFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+MpuFI::MpuFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     logger.addInfo("Section", "DPU");
 }
@@ -890,7 +919,7 @@ void MpuFI::printTlb()
 }
 
 //==============Pre Fetch Unit FI==================
-PFUFI::PFUFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+PFUFI::PFUFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     printFlag = false;
     logger.addInfo("Section", "PFU");
@@ -942,7 +971,7 @@ void PFUFI::execute()
 
 //==================Cache FI=================
 
-CacheFI::CacheFI(FISystem *fiSystem, IniReader *config) : FaultInject(fiSystem, config)
+CacheFI::CacheFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
 
     fiSystem->memRecords.resize(256);
@@ -1066,3 +1095,101 @@ std::vector<InjectEntry> MBU::genL(uint32_t addr, uint8_t count, uint32_t align)
     res[1].fids.push_back(bi);
     return res;
 }
+
+// ====================== Profile ==========================
+Profiler::Profiler(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
+{
+}
+void Profiler::postExecute()
+{
+    if (!inUserFun())
+        return;
+    inst = fiSystem->getCPU()->inst;
+    traceData = fiSystem->getCPU()->traceData;
+    // if(!traceData)
+    //     return ;
+    curFun = getCurFun()->getName();
+    CountInst();
+}
+void Profiler::CountInst()
+{
+    OpClass opc = traceData->getStaticInst()->opClass();
+
+    if (opc == Enums::MemRead)
+        programProfiler.SetIntData(curFun, Profile::LD_ECOUNT, programProfiler.GetIntData(curFun, Profile::LD_ECOUNT) + 1);
+    else if (opc == Enums::MemWrite)
+        programProfiler.SetIntData(curFun, Profile::ST_ECOUNT, programProfiler.GetIntData(curFun, Profile::ST_ECOUNT) + 1);
+}
+void Profiler::Finish()
+{
+    programProfiler.Dump("profile");
+}
+
+// ======================Bus FI ============================
+BusFI::BusFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
+{
+    InitProfile(config->getValue("GLOBAL", "profile"));
+    ld_exe_cnt = 0;
+    st_exe_cnt = 0;
+    logger.addInfo("Section", "Bus");
+}
+void BusFI::postExecute()
+{
+    // checkExec
+    if (finish || getCurFun() != function)
+        return;
+
+    traceData = fiSystem->getCPU()->traceData;
+    if (!checkExec())
+        return;
+
+    if (op == Enums::MemRead)
+    {
+        const RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+        uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
+        uint32_t fVal = ranFlip(rVal, 32, fcount);
+        logger.addInfo("Floc", csprintf("R%d", regIndex));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+        cprintf("reg = %d , P-FI : %d , A-FI : %d \n", regIndex,rVal,fVal);
+    }else if(op == Enums::MemWrite){
+        Addr addr = traceData->getAddr();
+        uint32_t data = fiSystem->readMem(addr);
+        uint32_t fVal = ranFlip(data, 32,fcount);
+        fiSystem->writeMem(addr, fVal);
+        logger.addInfo("Addr", csprintf("%x", addr));
+        logger.addInfo("P-FI", csprintf("%x", data));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+        cprintf("addr = %x , P-FI : %x , A-FI : %x \n", addr,data,fVal);
+
+    }
+    finish = true;
+    log_flag = true;
+}
+
+bool BusFI::checkExec()
+{
+
+    OpClass opc = traceData->getStaticInst()->opClass();
+    if (opc == Enums::MemRead)
+    {
+        op = opc;
+        ld_exe_cnt++;
+        int totalcnt = programProfiler.GetIntData(function->getName(), Profile::LD_ECOUNT);
+        return ranTrigger(0, totalcnt/2, ld_exe_cnt);
+    }
+    if (opc == Enums::MemWrite)
+    {
+        op = opc;
+        st_exe_cnt++;
+        int totalcnt = programProfiler.GetIntData(function->getName(), Profile::ST_ECOUNT);
+        return ranTrigger(0, totalcnt/2, st_exe_cnt);
+    }
+
+    return false;
+}
+
+// void BusFI::Finish(){
+//     FaultInject::Finish();
+//     cprintf("ld_exe_cnt = %d , st_exe_cnt = %d \n",ld_exe_cnt,st_exe_cnt);
+// }

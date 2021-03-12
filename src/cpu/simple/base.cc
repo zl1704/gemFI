@@ -69,6 +69,7 @@
 #include "debug/Decode.hh"
 #include "debug/Fetch.hh"
 #include "debug/Quiesce.hh"
+#include "debug/ExecFaulting.hh"
 #include "mem/packet.hh"
 #include "mem/request.hh"
 #include "params/BaseSimpleCPU.hh"
@@ -649,7 +650,7 @@ BaseSimpleCPU::postExecute()
     if (FullSystem)
         traceFunctions(instAddr);
 
-    if (traceData) {
+    if (DTRACE(ExecFaulting)&&traceData) {
         traceData->dump(); //dump 指令
         delete traceData;
         traceData = NULL;

@@ -165,6 +165,7 @@ public:
 
     Function *getFunction(std::string file, std::string name);
     Function *findFunByLine(uint32_t line);
+    std::vector<Function*> getAllFunctions(){return mcu->getFuns();};
     Variable *getVar(std::string file, std::string name);
     Frame *getFrame() { return frame; }
     AtomicSimpleCPU *getCPU() { return cpu; }
@@ -209,7 +210,7 @@ private:
     CompilationUnit *mcu;
 
     // config
-    IniReader *config;
+    IniManager *config;
 
     //FI
     FaultInject *FI;

@@ -47,6 +47,7 @@
 #include "arch/mmapped_ipr.hh"
 #include "arch/utility.hh"
 #include "base/output.hh"
+#include "base/trace.hh"
 #include "config/the_isa.hh"
 #include "cpu/exetrace.hh"
 #include "cpu/utils.hh"
@@ -60,6 +61,7 @@
 #include "sim/faults.hh"
 #include "sim/full_system.hh"
 #include "sim/system.hh"
+
 
 using namespace std;
 using namespace TheISA;
@@ -779,11 +781,11 @@ void AtomicSimpleCPU::tick()
                     countInst();
                     ppCommit->notify(std::make_pair(thread, curStaticInst));
                 }
-                else if (traceData && !DTRACE(ExecFaulting))
-                {
-                    delete traceData;
-                    traceData = NULL;
-                }
+                // else if (traceData && !DTRACE(ExecFaulting))
+                // {
+                //     delete traceData;
+                //     traceData = NULL;
+                // }
 
                 if (fault != NoFault &&
                     dynamic_pointer_cast<SyscallRetryFault>(fault))
@@ -794,8 +796,10 @@ void AtomicSimpleCPU::tick()
                     stall_ticks += clockEdge(syscallRetryLatency) - curTick();
                 }
 
-                postExecute();
+                postExecute();//trace 
                 fiSystem->postProcess();
+                delete traceData;
+                traceData = NULL;
             }
 
             // @todo remove me after debugging with legion done

@@ -71,8 +71,9 @@ class ExeTracer : public InstTracer
             const StaticInstPtr staticInst, TheISA::PCState pc,
             const StaticInstPtr macroStaticInst = NULL)
     {
-        if (!Debug::ExecEnable)
-            return NULL;
+      // zzz
+        // if (!Debug::ExecEnable)
+        //     return NULL;
 
         return new ExeTracerRecord(when, tc,
                 staticInst, pc, macroStaticInst);

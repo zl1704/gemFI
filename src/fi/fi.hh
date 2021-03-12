@@ -1,11 +1,19 @@
 #ifndef __FI_HH__
 #define __FI_HH__
 #include <string>
-
+#include "arch/types.hh"
+#include "cpu/op_class.hh"
 #include "fi/compile_info.hh"
 #include "fi/ini_reader.hh"
-#include "arch/types.hh"
+
+#include "fi/profile.hh"
+
 class FISystem;
+namespace Trace {
+    class InstRecord;
+};
+
+
 class FILogger
 {
 public:
@@ -39,7 +47,9 @@ public:
     virtual void preExecute() {}
     virtual void execute() {}
     virtual void postExecute();
-    static FaultInject *create(IniReader *config, FISystem *fiSystem);
+    virtual void Finish();
+
+    static FaultInject *create(IniManager *config, FISystem *fiSystem);
 
 protected:
     FISystem *fiSystem;
@@ -57,12 +67,17 @@ protected:
 
     bool  log_flag{false};
 
-    FaultInject(FISystem *_fiSystem, IniReader *config);
+    ProgramProfile programProfiler;
+
+    FaultInject(FISystem *_fiSystem, IniManager *config);
+    bool inUserFun();
+    Function* getCurFun();
     bool checkExec();
-    void readFLData(IniReader *confi);
+    void readFLData(IniManager *confi);
+    void InitProfile(std::string profile_file);
     void ranPickFun();
     bool doFIProcess() { return true; };
-
+    
     
     static bool ranTrigger(uint64_t from, uint64_t to, uint64_t cur, uint32_t rdepth = 1);
     static uint64_t ranFlip(uint64_t data, uint8_t size = 32, uint8_t fc = 8);
@@ -86,10 +101,9 @@ public:
 
     virtual std::string name() { return "VarFI"; }
 
-    VarFI(FISystem *fiSystem, IniReader *config);
+    VarFI(FISystem *fiSystem, IniManager *config);
 
-protected:
-    bool doFIProcess() { return true; };
+
 
 private:
     Variable *var;
@@ -102,10 +116,9 @@ public:
     virtual void execute();
     virtual std::string name() { return "REGFI"; }
 
-    REGFI(FISystem *fiSystem, IniReader *config);
+    REGFI(FISystem *fiSystem, IniManager *config);
 
-protected:
-    bool doFIProcess() { return true; };
+
 
 private:
     int string2RegIndex(std::string reg);
@@ -118,10 +131,9 @@ public:
     virtual void preExecute() {}
     virtual void execute();
     virtual std::string name() { return "MEMFI"; }
-    MemFI(FISystem *fiSystem, IniReader *config);
+    MemFI(FISystem *fiSystem, IniManager *config);
 
-protected:
-    bool doFIProcess() { return true; };
+
 };
 /**
  *  Control Unit
@@ -132,10 +144,9 @@ public:
     virtual void preExecute();
     virtual void execute();
     virtual std::string name() { return "CUFI"; }
-    CUFI(FISystem *fiSystem, IniReader *config);
+    CUFI(FISystem *fiSystem, IniManager *config);
 
-protected:
-    bool doFIProcess() { return true; };
+
 };
 
 class DpuFI : public FaultInject
@@ -145,10 +156,9 @@ public:
     virtual void execute();
     virtual void postExecute();
     virtual std::string name() { return "DPUFI"; }
-    DpuFI(FISystem *fiSystem, IniReader *config);
+    DpuFI(FISystem *fiSystem, IniManager *config);
 
-protected:
-    bool doFIProcess() { return true; };
+
 
 private:
     typedef enum
@@ -190,7 +200,7 @@ public:
     virtual void execute();
     // virtual void postExecute() {}
     virtual std::string name() { return "MpuFI"; }
-    MpuFI(FISystem *fiSystem, IniReader *config);
+    MpuFI(FISystem *fiSystem, IniManager *config);
 
 protected:
     bool doFIProcess();
@@ -209,10 +219,10 @@ public:
     virtual void execute();
     // virtual void postExecute() {}
     virtual std::string name() { return "PFUFI"; }
-    PFUFI(FISystem *fiSystem, IniReader *config);
+    PFUFI(FISystem *fiSystem, IniManager *config);
 
 protected:
-    bool doFIProcess() { return true; };
+
     static const uint8_t inst_queue_size = 8;
 };
 
@@ -225,10 +235,9 @@ public:
     virtual void execute();
     // virtual void postExecute() {}
     virtual std::string name() { return "CACHEFI"; }
-    CacheFI(FISystem *fiSystem, IniReader *config);
+    CacheFI(FISystem *fiSystem, IniManager *config);
 
-protected:
-    bool doFIProcess() { return true; }
+
 };
 
 struct InjectEntry
@@ -257,5 +266,46 @@ public:
     static std::vector<InjectEntry> genL(uint32_t addr, uint8_t count, uint32_t align);
 
 };
+
+/**
+ *   Profile
+ * */
+
+class Profiler : public FaultInject{
+public:
+    virtual void postExecute() ;
+    Profiler(FISystem *fiSystem, IniManager *config);
+    void Finish();
+private:
+
+    
+
+    void CountInst();
+    Trace::InstRecord *traceData;
+    ArmISA::MachInst inst;
+    std::string curFun;
+    
+};
+
+
+
+/**
+ *   Bus
+ * */
+class BusFI : public FaultInject{
+public:
+    virtual void postExecute();
+    virtual std::string name() { return "BusFI"; }
+    BusFI(FISystem *fiSystem, IniManager *config);
+    // void Finish();
+private:
+
+    bool checkExec();
+    Enums::OpClass op;
+    uint32_t ld_exe_cnt;
+    uint32_t st_exe_cnt;    
+    Trace::InstRecord *traceData;
+};
+
 
 #endif

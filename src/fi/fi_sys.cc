@@ -289,7 +289,7 @@ FISystem::FISystem(AtomicSimpleCPU *_cpu) : cpu(_cpu)
     memRecords.resize(-1);
     // string config_file = "configs/fi/fi.ini";
     
-    config = new IniReader();
+    config = new IniManager();
     initEnv();
 
 
@@ -633,7 +633,7 @@ RegVal FISystem::readReg(IntRegIndex reg)
 
 void FISystem::close()
 {
-
+    FI->Finish();
     DPRINTF(FISYS, "FISystem::close\n");
     // pcInfo.dump();
 }

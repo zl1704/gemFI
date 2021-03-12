@@ -5,7 +5,7 @@
 #include <vector>
 
 
-class IniReader
+class IniManager
 {
 	private:
 		// Ini Container
@@ -42,6 +42,8 @@ class IniReader
 		bool changeValue(const std::string &section, const std::string &key, const std::string &value);
 
 		std::string getValue(const std::string &section, const std::string &key);
+
+		std::map<std::string, std::string> getKVs(std::string section);
 };
 
 #endif

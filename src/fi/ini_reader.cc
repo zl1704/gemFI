@@ -5,7 +5,7 @@
 
 
 // split Line into key and value
-std::vector<std::string> IniReader::splitLine(const std::string &line, char delim)
+std::vector<std::string> IniManager::splitLine(const std::string &line, char delim)
 {
 	std::stringstream ss(line);
 	std::string item;
@@ -21,7 +21,7 @@ std::vector<std::string> IniReader::splitLine(const std::string &line, char deli
 
 
 // File Methods
-bool IniReader::readFromFile(const std::string &filename)
+bool IniManager::readFromFile(const std::string &filename)
 {
 	std::string line;
 	std::ifstream file(filename);
@@ -65,7 +65,7 @@ bool IniReader::readFromFile(const std::string &filename)
 	}
 }
 
-bool IniReader::writeToFile(const std::string &filename)
+bool IniManager::writeToFile(const std::string &filename)
 {
 	std::ofstream file;
 	file.open(filename);
@@ -96,7 +96,7 @@ bool IniReader::writeToFile(const std::string &filename)
 
 
 // Section Methods
-bool IniReader::addSection(const std::string &section)
+bool IniManager::addSection(const std::string &section)
 {
 	auto it = iniContainer.find(section);
 	
@@ -112,7 +112,7 @@ bool IniReader::addSection(const std::string &section)
 	}
 }
 
-bool IniReader::renameSection(const std::string &oldSection, const std::string &newSection)
+bool IniManager::renameSection(const std::string &oldSection, const std::string &newSection)
 {
 	auto oldIt = iniContainer.find(oldSection);
 	auto newIt = iniContainer.find(newSection);
@@ -130,7 +130,7 @@ bool IniReader::renameSection(const std::string &oldSection, const std::string &
 	}
 }
 
-bool IniReader::deleteSection(const std::string &section)
+bool IniManager::deleteSection(const std::string &section)
 {
 	auto it = iniContainer.find(section);
 	
@@ -149,7 +149,7 @@ bool IniReader::deleteSection(const std::string &section)
 
 
 // Key Methods
-bool IniReader::addKey(const std::string &section, const std::string &key, const std::string &value)
+bool IniManager::addKey(const std::string &section, const std::string &key, const std::string &value)
 {
 	auto secIt = iniContainer.find(section);
 	
@@ -175,7 +175,7 @@ bool IniReader::addKey(const std::string &section, const std::string &key, const
 	}
 }
 
-bool IniReader::renameKey(const std::string &section, const std::string &oldKey, const std::string &newKey)
+bool IniManager::renameKey(const std::string &section, const std::string &oldKey, const std::string &newKey)
 {
 	auto secIt = iniContainer.find(section);
 	
@@ -203,7 +203,7 @@ bool IniReader::renameKey(const std::string &section, const std::string &oldKey,
 	}
 }
 
-bool IniReader::deleteKey(const std::string &section, const std::string &key)
+bool IniManager::deleteKey(const std::string &section, const std::string &key)
 {
 	auto secIt = iniContainer.find(section);
 	
@@ -231,7 +231,7 @@ bool IniReader::deleteKey(const std::string &section, const std::string &key)
 
 
 // Value Methods
-bool IniReader::changeValue(const std::string &section, const std::string &key, const std::string &value)
+bool IniManager::changeValue(const std::string &section, const std::string &key, const std::string &value)
 {
 	auto secIt = iniContainer.find(section);
 	
@@ -257,7 +257,7 @@ bool IniReader::changeValue(const std::string &section, const std::string &key, 
 	}
 }
 
-std::string IniReader::getValue(const std::string &section, const std::string &key)
+std::string IniManager::getValue(const std::string &section, const std::string &key)
 {
 	auto secIt = iniContainer.find(section);
 	
@@ -281,3 +281,8 @@ std::string IniReader::getValue(const std::string &section, const std::string &k
 		return "";
 	}
 }
+std::map<std::string, std::string> IniManager::getKVs(std::string section){
+	return iniContainer[section];
+}
+
+

@@ -1,0 +1,16 @@
+[init_arr]
+LD_ECount=401
+ST_ECount=201
+
+[main]
+LD_ECount=111
+ST_ECount=88
+
+[test_read]
+LD_ECount=2105
+ST_ECount=2007
+
+[verify]
+LD_ECount=1149
+ST_ECount=406
+
