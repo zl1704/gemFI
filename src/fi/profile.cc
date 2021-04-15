@@ -17,6 +17,7 @@ void ProgramProfile::FromFile(std::string file_name,FISystem* fiSystem){
         FunProfile* fp= new FunProfile;
         fp->ld_ecnt = stoi(pkvs[LD_ECOUNT]);
         fp->st_ecnt = stoi(pkvs[ST_ECOUNT]);
+        fp->bus_ld_ecnt = stoi(pkvs[BUS_LD_ECOUNT]);
         funInfos[fun->getName()] = fp;
     }
 }
@@ -25,8 +26,9 @@ void ProgramProfile::Dump(std::string file_name){
     IniManager profile;
     for(auto funInfo : funInfos){
         profile.addSection(funInfo.first);
-        profile.addKey(funInfo.first,"LD_ECount",to_string(funInfo.second->ld_ecnt));
-        profile.addKey(funInfo.first,"ST_ECount",to_string(funInfo.second->st_ecnt));
+        profile.addKey(funInfo.first,LD_ECOUNT,to_string(funInfo.second->ld_ecnt));
+        profile.addKey(funInfo.first,ST_ECOUNT,to_string(funInfo.second->st_ecnt));
+        profile.addKey(funInfo.first,BUS_LD_ECOUNT,to_string(funInfo.second->bus_ld_ecnt));
     }
     profile.writeToFile(file_name);
 }
@@ -44,8 +46,10 @@ int ProgramProfile::GetIntData(std::string fun, std::string attr){
 
     if(attr == LD_ECOUNT)
         return fpf->ld_ecnt;
-   else if(attr == ST_ECOUNT)
+    else if(attr == ST_ECOUNT)
         return fpf->st_ecnt;
+    else if(attr == BUS_LD_ECOUNT)
+        return fpf->bus_ld_ecnt;
  
     return 0;
 
@@ -59,8 +63,10 @@ void ProgramProfile::SetIntData(std::string fun, std::string attr,int val){
     }
     if(attr == LD_ECOUNT)
         fpf->ld_ecnt = val;
-   else if(attr == ST_ECOUNT)
+    else if(attr == ST_ECOUNT)
         fpf->st_ecnt = val;
+    else if(attr == BUS_LD_ECOUNT)
+        fpf->bus_ld_ecnt = val;
 }
 
 void ProgramProfile::SetStrData(std::string fun, std::string attr,std::string val){

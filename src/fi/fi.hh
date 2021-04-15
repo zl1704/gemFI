@@ -279,15 +279,19 @@ public:
 private:
 
     
-
+    
     void CountInst();
-    Trace::InstRecord *traceData;
+
+    Trace::InstRecord *traceData{nullptr};
+    Addr prevReadAddr;
     ArmISA::MachInst inst;
+    ArmISA::MachInst preInst;
     std::string curFun;
+    
     
 };
 
-
+//===================TEST========================
 
 /**
  *   Bus
@@ -297,7 +301,7 @@ public:
     virtual void postExecute();
     virtual std::string name() { return "BusFI"; }
     BusFI(FISystem *fiSystem, IniManager *config);
-    // void Finish();
+    void Finish();
 private:
 
     bool checkExec();
@@ -305,7 +309,13 @@ private:
     uint32_t ld_exe_cnt;
     uint32_t st_exe_cnt;    
     Trace::InstRecord *traceData;
+    Addr prevReadAddr;
+    RegIndex prevRegIdx;
 };
+
+
+
+
 
 
 #endif

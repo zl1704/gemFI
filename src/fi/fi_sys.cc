@@ -344,7 +344,8 @@ bool FISystem::initFI()
         di->genCUList(cus);
         for (CompilationUnit *cu : cus)
         {
-            if (cu->findFunction("", "main"))
+
+            if (cu->findFunction("", "main")||cu->findFunction("", "__exec"))
             {
                 mcu = cu;
             }
@@ -442,7 +443,13 @@ void FISystem::switchFrame()
                 frame->setActive(false);
                 fstack.push(frame);
                 frame = new Frame(function, thread->readIntReg(INTREG_SP), cur_pc);
+            }else
+            {
+                //回到当前函数
+                frame->setActive(true);
+                frame->setPC(cur_pc);
             }
+            
         }
         else
         {
@@ -583,7 +590,7 @@ uint64_t FISystem::readMem(Addr addr)
                  thread->pcState().instAddr());
 
     Fault fault = thread->dtb->translateAtomic(req, thread->getTC(),
-                                               BaseTLB::Write);
+                                               BaseTLB::Read);
     Packet pkt(req, Packet::makeWriteCmd(req));
     pkt.dataStatic(&res);
     cpu->sendPacket(cpu->dcachePort, &pkt);

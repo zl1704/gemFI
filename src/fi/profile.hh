@@ -4,16 +4,18 @@
 #include <unordered_map>
 #include "ini_reader.hh"
 namespace Profile{
-    static  std::string LD_ECOUNT = "LD_ECount";
-    static  std::string ST_ECOUNT = "ST_ECount";
+    static  std::string LD_ECOUNT = "LDECount";
+    static  std::string ST_ECOUNT = "STECount";
+    static  std::string BUS_LD_ECOUNT = "BusLDECount";
+
 }
 
 class FunProfile{
 public:
     uint32_t ld_ecnt{0};
-    uint32_t st_ecnt{0};
-
-
+    uint32_t st_ecnt{0};    
+    uint32_t bus_ld_ecnt{0};
+    
 };
 class FISystem;
 class ProgramProfile{

@@ -652,8 +652,8 @@ BaseSimpleCPU::postExecute()
 
     if (DTRACE(ExecFaulting)&&traceData) {
         traceData->dump(); //dump 指令
-        delete traceData;
-        traceData = NULL;
+        // delete traceData;
+        // traceData = NULL;
     }
     
     // Call CPU instruction commit probes

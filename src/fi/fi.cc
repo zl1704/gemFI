@@ -225,15 +225,16 @@ uint64_t FaultInject::ranFlip(uint64_t data, uint8_t from, uint8_t to, uint8_t f
 bool FaultInject::inUserFun()
 {
     Frame *frame = fiSystem->getFrame();
-    if (!frame)
+    if (!frame || !frame->isActive())
         return false;
     return true;
 }
 Function *FaultInject::getCurFun()
 {
     Frame *frame = fiSystem->getFrame();
-    if (!frame)
+    if (!frame || !frame->isActive())
         return nullptr;
+    
     return frame->getFun();
 }
 
@@ -242,7 +243,7 @@ bool FaultInject::checkExec()
     if (finish)
         return false;
     Frame *frame = fiSystem->getFrame();
-    if (!frame)
+    if (!frame || !frame->isActive())
         return false;
     Function *exe_fun = frame->getFun();
     if (exe_fun == function)
@@ -1102,9 +1103,12 @@ Profiler::Profiler(FISystem *fiSystem, IniManager *config) : FaultInject(fiSyste
 }
 void Profiler::postExecute()
 {
+
+    
     if (!inUserFun())
         return;
     inst = fiSystem->getCPU()->inst;
+    
     traceData = fiSystem->getCPU()->traceData;
     // if(!traceData)
     //     return ;
@@ -1114,11 +1118,21 @@ void Profiler::postExecute()
 void Profiler::CountInst()
 {
     OpClass opc = traceData->getStaticInst()->opClass();
-
-    if (opc == Enums::MemRead)
+    Addr rAddr = 0;
+    if (opc == Enums::MemRead){
         programProfiler.SetIntData(curFun, Profile::LD_ECOUNT, programProfiler.GetIntData(curFun, Profile::LD_ECOUNT) + 1);
+        rAddr = traceData->getAddr();
+        if(rAddr == prevReadAddr)
+            programProfiler.SetIntData(curFun, Profile::BUS_LD_ECOUNT, programProfiler.GetIntData(curFun, Profile::BUS_LD_ECOUNT) + 1);
+
+
+    }
     else if (opc == Enums::MemWrite)
         programProfiler.SetIntData(curFun, Profile::ST_ECOUNT, programProfiler.GetIntData(curFun, Profile::ST_ECOUNT) + 1);
+
+
+    prevReadAddr = rAddr;
+
 }
 void Profiler::Finish()
 {
@@ -1140,19 +1154,25 @@ void BusFI::postExecute()
         return;
 
     traceData = fiSystem->getCPU()->traceData;
-    if (!checkExec())
+    if (!checkExec()){
+
         return;
+    }
 
     if (op == Enums::MemRead)
     {
-        const RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+        RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+        if(ranTrigger(0,1,1) && prevReadAddr!=0) // 1/2概率
+            regIndex = prevRegIdx;
         uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
         uint32_t fVal = ranFlip(rVal, 32, fcount);
+        fiSystem->writeReg((IntRegIndex)regIndex,fVal);
         logger.addInfo("Floc", csprintf("R%d", regIndex));
         logger.addInfo("P-FI", csprintf("%x", rVal));
         logger.addInfo("A-FI", csprintf("%x", fVal));
         cprintf("reg = %d , P-FI : %d , A-FI : %d \n", regIndex,rVal,fVal);
-    }else if(op == Enums::MemWrite){
+    }
+    else if(op == Enums::MemWrite){
         Addr addr = traceData->getAddr();
         uint32_t data = fiSystem->readMem(addr);
         uint32_t fVal = ranFlip(data, 32,fcount);
@@ -1161,7 +1181,6 @@ void BusFI::postExecute()
         logger.addInfo("P-FI", csprintf("%x", data));
         logger.addInfo("A-FI", csprintf("%x", fVal));
         cprintf("addr = %x , P-FI : %x , A-FI : %x \n", addr,data,fVal);
-
     }
     finish = true;
     log_flag = true;
@@ -1169,27 +1188,52 @@ void BusFI::postExecute()
 
 bool BusFI::checkExec()
 {
-
+    Addr addr = 0;
+    RegIndex regIdx = 1111;
     OpClass opc = traceData->getStaticInst()->opClass();
+    bool result = false;
     if (opc == Enums::MemRead)
     {
-        op = opc;
-        ld_exe_cnt++;
-        int totalcnt = programProfiler.GetIntData(function->getName(), Profile::LD_ECOUNT);
-        return ranTrigger(0, totalcnt/2, ld_exe_cnt);
+
+        regIdx = traceData->getStaticInst()->destRegIdx(0).index();
+        addr = traceData->getAddr();
+        int totalcnt = programProfiler.GetIntData(function->getName(), Profile::BUS_LD_ECOUNT);
+        if(addr == prevReadAddr){
+            op = opc;
+            ld_exe_cnt++;
+            
+            // result = ranTrigger(0, totalcnt, ld_exe_cnt);
+            // return result;
+            // result = false;
+        }
+        {
+            //其他load指令的概率
+            result = ranTrigger(0, totalcnt/2, ld_exe_cnt);
+            // return result;
+
+        }
+        
+        
     }
+    if(!result){
+        prevRegIdx = regIdx;
+        prevReadAddr = addr;
+    }
+
+
+
     if (opc == Enums::MemWrite)
     {
         op = opc;
         st_exe_cnt++;
         int totalcnt = programProfiler.GetIntData(function->getName(), Profile::ST_ECOUNT);
-        return ranTrigger(0, totalcnt/2, st_exe_cnt);
+        result = ranTrigger(0, totalcnt, st_exe_cnt);
     }
-
-    return false;
+    
+    return result;
 }
 
-// void BusFI::Finish(){
-//     FaultInject::Finish();
-//     cprintf("ld_exe_cnt = %d , st_exe_cnt = %d \n",ld_exe_cnt,st_exe_cnt);
-// }
+void BusFI::Finish(){
+    FaultInject::Finish();
+    // cprintf("ld_exe_cnt = %d , st_exe_cnt = %d \n",ld_exe_cnt,st_exe_cnt);
+}
