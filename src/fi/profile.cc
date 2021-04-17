@@ -29,6 +29,13 @@ void ProgramProfile::Dump(std::string file_name){
         profile.addKey(funInfo.first,LD_ECOUNT,to_string(funInfo.second->ld_ecnt));
         profile.addKey(funInfo.first,ST_ECOUNT,to_string(funInfo.second->st_ecnt));
         profile.addKey(funInfo.first,BUS_LD_ECOUNT,to_string(funInfo.second->bus_ld_ecnt));
+        profile.addKey(funInfo.first,ECOUNT,to_string(funInfo.second->ecnt));
+        std::string blocks = "";
+        for(auto addr : funInfo.second->block_head_addrs){
+            blocks = blocks +to_string(addr) + " ";
+        }
+        profile.addKey(funInfo.first,BLOCK_ADDR,blocks);
+
     }
     profile.writeToFile(file_name);
 }
@@ -37,7 +44,7 @@ std::string ProgramProfile::GetStrData(std::string fun, std::string atrr){
 
     return "";
 }
-int ProgramProfile::GetIntData(std::string fun, std::string attr){
+int64_t ProgramProfile::GetIntData(std::string fun, std::string attr){
     FunProfile* fpf = funInfos[fun];
     if(!fpf){
         fpf = new FunProfile;
@@ -50,12 +57,14 @@ int ProgramProfile::GetIntData(std::string fun, std::string attr){
         return fpf->st_ecnt;
     else if(attr == BUS_LD_ECOUNT)
         return fpf->bus_ld_ecnt;
+    else if(attr == ECOUNT)
+        return fpf->ecnt;
  
     return 0;
 
 }
 
-void ProgramProfile::SetIntData(std::string fun, std::string attr,int val){
+void ProgramProfile::SetIntData(std::string fun, std::string attr,int64_t val){
     FunProfile* fpf = funInfos[fun];
     if(!fpf){
         fpf = new FunProfile;
@@ -67,6 +76,8 @@ void ProgramProfile::SetIntData(std::string fun, std::string attr,int val){
         fpf->st_ecnt = val;
     else if(attr == BUS_LD_ECOUNT)
         fpf->bus_ld_ecnt = val;
+    else if(attr == ECOUNT)
+        fpf->ecnt = val;
 }
 
 void ProgramProfile::SetStrData(std::string fun, std::string attr,std::string val){
@@ -76,4 +87,14 @@ void ProgramProfile::SetStrData(std::string fun, std::string attr,std::string va
         funInfos[fun] = fpf;
     }
 
+}
+
+void ProgramProfile::AddBlockAddr(std::string fun, uint32_t addr)
+{
+    FunProfile* fpf = funInfos[fun];
+    if(!fpf){
+        fpf = new FunProfile;
+        funInfos[fun] = fpf;
+    }
+    fpf->block_head_addrs.insert(addr);
 }

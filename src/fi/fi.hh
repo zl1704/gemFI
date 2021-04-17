@@ -281,7 +281,7 @@ private:
     
     
     void CountInst();
-
+    void RecordBlockAddr();
     Trace::InstRecord *traceData{nullptr};
     Addr prevReadAddr;
     ArmISA::MachInst inst;
@@ -313,7 +313,31 @@ private:
     RegIndex prevRegIdx;
 };
 
+/**
+ *  Reg  
+ **/
+class RegFI : public FaultInject{
+public:
+    virtual void postExecute();
+    virtual void preExecute() ;
+    virtual std::string name() { return "RegFI"; }
+    RegFI(FISystem *fiSystem, IniManager *config);
 
+private:
+    Trace::InstRecord *traceData;
+    bool checkPostExec();
+    bool checkPreExec();
+
+};
+
+
+/**
+ * CpuCtr
+ * */
+
+// class CpuCtrFI : public FaultInject{
+
+// };
 
 
 

@@ -57,7 +57,7 @@ class BranchImm : public PredOp
               int32_t _imm) :
         PredOp(mnem, _machInst, __opClass), imm(_imm)
     {}
-
+    int32_t getImm(){return imm;}
     std::string generateDisassembly(Addr pc, const SymbolTable *symtab) const;
 };
 

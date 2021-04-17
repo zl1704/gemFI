@@ -14,6 +14,7 @@
 #include "debug/PFUFI.hh"
 #include "debug/CACHEFI.hh"
 #include "cpu/exetrace.hh"
+#include "arch/arm/insts/branch.hh"
 using namespace std;
 using namespace util;
 
@@ -73,7 +74,7 @@ FaultInject *FaultInject::create(IniManager *config, FISystem *fiSystem)
 {
     FaultInject *fi = nullptr;
     string fipos = config->getValue("GLOBAL", "section");
-    if (fipos == "REG")
+    if (fipos == "REG-")
         fi = new REGFI(fiSystem, config);
     else if (fipos == "CU")
         fi = new CUFI(fiSystem, config);
@@ -93,6 +94,8 @@ FaultInject *FaultInject::create(IniManager *config, FISystem *fiSystem)
         fi = new Profiler(fiSystem, config);
     else if (fipos == "BUS")
         fi = new BusFI(fiSystem, config);
+    else if (fipos == "REG")
+        fi = new RegFI(fiSystem, config);
     else
         fi = new FaultInject(fiSystem, config);
 
@@ -169,7 +172,7 @@ void FaultInject::dump()
     if (function)
         function->print();
 }
-
+//[from , to ]
 uint64_t FaultInject::genRan(uint64_t from, uint64_t to)
 {
     srand((uint32_t)time(0));
@@ -234,7 +237,7 @@ Function *FaultInject::getCurFun()
     Frame *frame = fiSystem->getFrame();
     if (!frame || !frame->isActive())
         return nullptr;
-    
+
     return frame->getFun();
 }
 
@@ -364,10 +367,9 @@ void REGFI::execute()
     // }
 
     //随机方式
-    
 
     uint8_t ri = genRan(0, 15 - fcount);
-    if(reg_index >= 0)
+    if (reg_index >= 0)
         ri = reg_index;
     std::vector<InjectEntry> injects = MBU::genEntries(ri, fcount, 1);
 
@@ -1104,36 +1106,57 @@ Profiler::Profiler(FISystem *fiSystem, IniManager *config) : FaultInject(fiSyste
 void Profiler::postExecute()
 {
 
-    
     if (!inUserFun())
         return;
     inst = fiSystem->getCPU()->inst;
-    
+
     traceData = fiSystem->getCPU()->traceData;
     // if(!traceData)
     //     return ;
     curFun = getCurFun()->getName();
     CountInst();
+    RecordBlockAddr();
 }
 void Profiler::CountInst()
 {
     OpClass opc = traceData->getStaticInst()->opClass();
     Addr rAddr = 0;
-    if (opc == Enums::MemRead){
+    if (opc == Enums::MemRead)
+    {
         programProfiler.SetIntData(curFun, Profile::LD_ECOUNT, programProfiler.GetIntData(curFun, Profile::LD_ECOUNT) + 1);
         rAddr = traceData->getAddr();
-        if(rAddr == prevReadAddr)
+        if (rAddr == prevReadAddr)
             programProfiler.SetIntData(curFun, Profile::BUS_LD_ECOUNT, programProfiler.GetIntData(curFun, Profile::BUS_LD_ECOUNT) + 1);
-
-
     }
     else if (opc == Enums::MemWrite)
         programProfiler.SetIntData(curFun, Profile::ST_ECOUNT, programProfiler.GetIntData(curFun, Profile::ST_ECOUNT) + 1);
 
-
+    programProfiler.SetIntData(curFun, Profile::ECOUNT, programProfiler.GetIntData(curFun, Profile::ECOUNT) + 1);
+    
     prevReadAddr = rAddr;
-
 }
+
+void Profiler::RecordBlockAddr(){
+    Frame * frame = fiSystem->getFrame();
+    Function* curFun = frame->getFun();
+    Addr curPc = frame->getPC();
+    if(curPc == curFun->getRange().start)
+        programProfiler.AddBlockAddr(curFun->getName(),frame->getPC());
+    
+    if(traceData->getStaticInst()->isControl()){
+        // traceData->getStaticInst()->
+        StaticInst* inst =  traceData->getStaticInst().get();
+        if(dynamic_cast<BranchImm*>(inst)){
+            BranchImm* bImm = dynamic_cast<BranchImm*>(inst);
+            int32_t imm = bImm->getImm();
+            if(curFun->getRange().include(curPc+imm)){
+                programProfiler.AddBlockAddr(curFun->getName(),curPc+imm);
+            }
+        }
+        
+    }
+}
+
 void Profiler::Finish()
 {
     programProfiler.Dump("profile");
@@ -1154,7 +1177,8 @@ void BusFI::postExecute()
         return;
 
     traceData = fiSystem->getCPU()->traceData;
-    if (!checkExec()){
+    if (!checkExec())
+    {
 
         return;
     }
@@ -1162,25 +1186,26 @@ void BusFI::postExecute()
     if (op == Enums::MemRead)
     {
         RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
-        if(ranTrigger(0,1,1) && prevReadAddr!=0) // 1/2概率
+        if (ranTrigger(0, 1, 1) && prevReadAddr != 0) // 1/2概率
             regIndex = prevRegIdx;
         uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
         uint32_t fVal = ranFlip(rVal, 32, fcount);
-        fiSystem->writeReg((IntRegIndex)regIndex,fVal);
+        fiSystem->writeReg((IntRegIndex)regIndex, fVal);
         logger.addInfo("Floc", csprintf("R%d", regIndex));
         logger.addInfo("P-FI", csprintf("%x", rVal));
         logger.addInfo("A-FI", csprintf("%x", fVal));
-        cprintf("reg = %d , P-FI : %d , A-FI : %d \n", regIndex,rVal,fVal);
+        // cprintf("reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
     }
-    else if(op == Enums::MemWrite){
+    else if (op == Enums::MemWrite)
+    {
         Addr addr = traceData->getAddr();
         uint32_t data = fiSystem->readMem(addr);
-        uint32_t fVal = ranFlip(data, 32,fcount);
+        uint32_t fVal = ranFlip(data, 32, fcount);
         fiSystem->writeMem(addr, fVal);
         logger.addInfo("Addr", csprintf("%x", addr));
         logger.addInfo("P-FI", csprintf("%x", data));
         logger.addInfo("A-FI", csprintf("%x", fVal));
-        cprintf("addr = %x , P-FI : %x , A-FI : %x \n", addr,data,fVal);
+        // cprintf("addr = %x , P-FI : %x , A-FI : %x \n", addr, data, fVal);
     }
     finish = true;
     log_flag = true;
@@ -1198,29 +1223,26 @@ bool BusFI::checkExec()
         regIdx = traceData->getStaticInst()->destRegIdx(0).index();
         addr = traceData->getAddr();
         int totalcnt = programProfiler.GetIntData(function->getName(), Profile::BUS_LD_ECOUNT);
-        if(addr == prevReadAddr){
+        if (addr == prevReadAddr)
+        {
             op = opc;
             ld_exe_cnt++;
-            
+
             // result = ranTrigger(0, totalcnt, ld_exe_cnt);
             // return result;
             // result = false;
         }
         {
             //其他load指令的概率
-            result = ranTrigger(0, totalcnt/2, ld_exe_cnt);
+            result = ranTrigger(0, totalcnt / 2, ld_exe_cnt);
             // return result;
-
         }
-        
-        
     }
-    if(!result){
+    if (!result)
+    {
         prevRegIdx = regIdx;
         prevReadAddr = addr;
     }
-
-
 
     if (opc == Enums::MemWrite)
     {
@@ -1229,11 +1251,74 @@ bool BusFI::checkExec()
         int totalcnt = programProfiler.GetIntData(function->getName(), Profile::ST_ECOUNT);
         result = ranTrigger(0, totalcnt, st_exe_cnt);
     }
-    
+
     return result;
 }
 
-void BusFI::Finish(){
+void BusFI::Finish()
+{
     FaultInject::Finish();
     // cprintf("ld_exe_cnt = %d , st_exe_cnt = %d \n",ld_exe_cnt,st_exe_cnt);
+}
+
+// ====================Reg FI=======================
+
+RegFI::RegFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
+{
+    InitProfile(config->getValue("GLOBAL", "profile"));
+    logger.addInfo("Section", "Bus");
+}
+
+bool RegFI::checkPostExec(){
+    if (finish || getCurFun() != function)
+        return false;
+
+    traceData = fiSystem->getCPU()->traceData;
+    if(!traceData)
+        return false;
+    OpClass opc = traceData->getStaticInst()->opClass();
+    if(opc<1 || opc >7)
+        return false;
+    return FaultInject::checkExec();
+}
+bool RegFI::checkPreExec(){
+    if (finish || getCurFun() != function)
+        return false;
+ 
+    return FaultInject::checkExec();
+
+}
+void RegFI::preExecute()
+{
+    if(!checkPreExec())
+        return ;
+
+    uint8_t ri = genRan(0, 3);
+    IntRegIndex regIndex = (IntRegIndex)ri;
+    uint32_t rVal = fiSystem->readReg(regIndex);
+    uint32_t fVal = ranFlip(rVal, 32, fcount);
+    fiSystem->writeReg((IntRegIndex)regIndex, fVal);
+    logger.addInfo("Floc", csprintf("R%d", regIndex));
+    logger.addInfo("P-FI", csprintf("%x", rVal));
+    logger.addInfo("A-FI", csprintf("%x", fVal));
+    cprintf("RegFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    
+    finish = true;
+}
+
+void RegFI::postExecute()
+{
+
+    if(!checkPostExec())
+        return ;
+    RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+
+    uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
+    uint32_t fVal = ranFlip(rVal, 32, fcount);
+    fiSystem->writeReg((IntRegIndex)regIndex, fVal);
+    logger.addInfo("Floc", csprintf("R%d", regIndex));
+    logger.addInfo("P-FI", csprintf("%x", rVal));
+    logger.addInfo("A-FI", csprintf("%x", fVal));
+    cprintf("RegFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    finish = true;
 }

@@ -585,13 +585,13 @@ void FISystem::writeMem(Addr addr, uint64_t data)
 uint64_t FISystem::readMem(Addr addr)
 {
     uint64_t res = 0;
-    const RequestPtr &req = cpu->data_write_req;
+    const RequestPtr &req = cpu->data_read_req;
     req->setVirt(0, addr, 1, ArmISA::TLB::MustBeOne | Request::ACQUIRE, cpu->dataMasterId(),
                  thread->pcState().instAddr());
 
     Fault fault = thread->dtb->translateAtomic(req, thread->getTC(),
                                                BaseTLB::Read);
-    Packet pkt(req, Packet::makeWriteCmd(req));
+    Packet pkt(req, Packet::makeReadCmd(req));
     pkt.dataStatic(&res);
     cpu->sendPacket(cpu->dcachePort, &pkt);
     //mem barrier
