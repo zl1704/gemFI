@@ -68,7 +68,7 @@ protected:
     bool  log_flag{false};
 
     ProgramProfile programProfiler;
-
+    uint32_t ecnt {0};
     FaultInject(FISystem *_fiSystem, IniManager *config);
     bool inUserFun();
     Function* getCurFun();
@@ -329,6 +329,27 @@ private:
     bool checkPreExec();
 
 };
+
+
+/**
+ *   TMem
+ * */
+
+
+class TMemFI : public FaultInject{
+public:
+    virtual void postExecute();
+    virtual void preExecute() ;
+    virtual std::string name() { return "TMemFI"; }
+    TMemFI(FISystem *fiSystem, IniManager *config);
+
+private:
+    Trace::InstRecord *traceData;
+    bool checkPostExec();
+    bool checkPreExec(); 
+
+
+}
 
 
 /**

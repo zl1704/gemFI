@@ -18,6 +18,7 @@ void ProgramProfile::FromFile(std::string file_name,FISystem* fiSystem){
         fp->ld_ecnt = stoi(pkvs[LD_ECOUNT]);
         fp->st_ecnt = stoi(pkvs[ST_ECOUNT]);
         fp->bus_ld_ecnt = stoi(pkvs[BUS_LD_ECOUNT]);
+        fp->ecnt = stoi(pkvs[ECOUNT]);
         funInfos[fun->getName()] = fp;
     }
 }

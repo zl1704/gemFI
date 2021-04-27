@@ -82,7 +82,7 @@ FaultInject *FaultInject::create(IniManager *config, FISystem *fiSystem)
         fi = new VarFI(fiSystem, config);
     else if (fipos == "ALU" || fipos == "DPU")
         fi = new DpuFI(fiSystem, config);
-    else if (fipos == "MEM")
+    else if (fipos == "MEM-")
         fi = new MemFI(fiSystem, config);
     else if (fipos == "MPU")
         fi = new MpuFI(fiSystem, config);
@@ -96,6 +96,8 @@ FaultInject *FaultInject::create(IniManager *config, FISystem *fiSystem)
         fi = new BusFI(fiSystem, config);
     else if (fipos == "REG")
         fi = new RegFI(fiSystem, config);
+    else if (fipos=="MEM")
+        fi = new TMemFI(fiSystem,config);
     else
         fi = new FaultInject(fiSystem, config);
 
@@ -251,12 +253,16 @@ bool FaultInject::checkExec()
     Function *exe_fun = frame->getFun();
     if (exe_fun == function)
     {
+        ecnt++;
         if (random || line == -1)
         {
-            Range r = exe_fun->getRange();
-            uint32_t rdepth = fiSystem->getRecurDepth();
+            // Range r = exe_fun->getRange();
+            // uint32_t rdepth = fiSystem->getRecurDepth();
             // cprintf("start: %d, end %d, cur: %d \n",r.start,r.end,fiSystem->pc.instAddr());
-            return ranTrigger(r.start, r.end, fiSystem->pc.instAddr() - 4, rdepth);
+            // return ranTrigger(r.start, r.end, fiSystem->pc.instAddr() - 4, rdepth);
+            uint64_t total = programProfiler.GetIntData(function->getName(),Profile::ECOUNT);
+
+            return ranTrigger(0,total/2,ecnt); 
         }
         else
             return line == function->findLine(fiSystem->pc.instAddr());
@@ -1266,7 +1272,7 @@ void BusFI::Finish()
 RegFI::RegFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
     InitProfile(config->getValue("GLOBAL", "profile"));
-    logger.addInfo("Section", "Bus");
+    logger.addInfo("Section", "Reg");
 }
 
 bool RegFI::checkPostExec(){
@@ -1277,7 +1283,7 @@ bool RegFI::checkPostExec(){
     if(!traceData)
         return false;
     OpClass opc = traceData->getStaticInst()->opClass();
-    if(opc<1 || opc >7)
+    if((opc<Enums::IntAlu && opc >Enums::FloatMult) || opc == Enums::MemRead)
         return false;
     return FaultInject::checkExec();
 }
@@ -1320,5 +1326,68 @@ void RegFI::postExecute()
     logger.addInfo("P-FI", csprintf("%x", rVal));
     logger.addInfo("A-FI", csprintf("%x", fVal));
     cprintf("RegFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    finish = true;
+}
+
+
+// ====================Mem FI=======================
+
+TMemFI::TMemFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
+{
+    InitProfile(config->getValue("GLOBAL", "profile"));
+    logger.addInfo("Section", "TMem");
+}
+
+bool TMemFI::checkPostExec(){
+    if (finish || getCurFun() != function)
+        return false;
+
+    traceData = fiSystem->getCPU()->traceData;
+    if(!traceData)
+        return false;
+    OpClass opc = traceData->getStaticInst()->opClass();
+    if((opc<Enums::IntAlu && opc >Enums::FloatMult) || opc == Enums::MemRead)
+        return false;
+    return FaultInject::checkExec();
+}
+bool TMemFI::checkPreExec(){
+    if (finish || getCurFun() != function)
+        return false;
+ 
+    return FaultInject::checkExec();
+
+}
+void TMemFI::preExecute()
+{
+    if(!checkPreExec())
+        return ;
+
+    uint8_t ri = genRan(0, 3);
+    IntRegIndex regIndex = (IntRegIndex)ri;
+    uint32_t rVal = fiSystem->readReg(regIndex);
+    uint32_t fVal = ranFlip(rVal, 32, fcount);
+    fiSystem->writeReg((IntRegIndex)regIndex, fVal);
+    logger.addInfo("Floc", csprintf("R%d", regIndex));
+    logger.addInfo("P-FI", csprintf("%x", rVal));
+    logger.addInfo("A-FI", csprintf("%x", fVal));
+    cprintf("TMemFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    
+    finish = true;
+}
+
+void TMemFI::postExecute()
+{
+
+    if(!checkPostExec())
+        return ;
+    RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+
+    uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
+    uint32_t fVal = ranFlip(rVal, 32, fcount);
+    fiSystem->writeReg((IntRegIndex)regIndex, fVal);
+    logger.addInfo("Floc", csprintf("R%d", regIndex));
+    logger.addInfo("P-FI", csprintf("%x", rVal));
+    logger.addInfo("A-FI", csprintf("%x", fVal));
+    cprintf("TMemFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
     finish = true;
 }
