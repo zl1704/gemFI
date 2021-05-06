@@ -1255,7 +1255,7 @@ bool BusFI::checkExec()
         op = opc;
         st_exe_cnt++;
         int totalcnt = programProfiler.GetIntData(function->getName(), Profile::ST_ECOUNT);
-        result = ranTrigger(0, totalcnt, st_exe_cnt);
+        result = ranTrigger(0, uint64_t(totalcnt*1.25), st_exe_cnt);
     }
 
     return result;
@@ -1283,14 +1283,15 @@ bool RegFI::checkPostExec(){
     if(!traceData)
         return false;
     OpClass opc = traceData->getStaticInst()->opClass();
-    if((opc<Enums::IntAlu && opc >Enums::FloatMult) || opc == Enums::MemRead)
+    if((opc<Enums::IntAlu || opc >Enums::FloatMult) )
         return false;
     return FaultInject::checkExec();
 }
 bool RegFI::checkPreExec(){
     if (finish || getCurFun() != function)
         return false;
- 
+    
+    
     return FaultInject::checkExec();
 
 }
@@ -1307,8 +1308,9 @@ void RegFI::preExecute()
     logger.addInfo("Floc", csprintf("R%d", regIndex));
     logger.addInfo("P-FI", csprintf("%x", rVal));
     logger.addInfo("A-FI", csprintf("%x", fVal));
-    cprintf("RegFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    // cprintf("RegFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
     
+    log_flag = true;
     finish = true;
 }
 
@@ -1325,8 +1327,9 @@ void RegFI::postExecute()
     logger.addInfo("Floc", csprintf("R%d", regIndex));
     logger.addInfo("P-FI", csprintf("%x", rVal));
     logger.addInfo("A-FI", csprintf("%x", fVal));
-    cprintf("RegFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    // cprintf("RegFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
     finish = true;
+    log_flag = true;
 }
 
 
@@ -1346,14 +1349,25 @@ bool TMemFI::checkPostExec(){
     if(!traceData)
         return false;
     OpClass opc = traceData->getStaticInst()->opClass();
-    if((opc<Enums::IntAlu && opc >Enums::FloatMult) || opc == Enums::MemRead)
-        return false;
+    // if((opc<Enums::IntAlu && opc >Enums::FloatMult) || opc == Enums::MemRead || opc == Enums::MemWrite )
+    if(opc == Enums::MemWrite ){
+        uint64_t sttotal = programProfiler.GetIntData(function->getName(),Profile::ST_ECOUNT);
+        uint64_t total = programProfiler.GetIntData(function->getName(),Profile::ECOUNT);
+        stecnt++;
+        bool result = ranTrigger(0,total + sttotal,stecnt); 
+        // return result;
+        if(result)
+            return true;
+    }
+
+    if((opc<Enums::IntAlu || opc >Enums::FloatMult) )
+        return false;        
     return FaultInject::checkExec();
 }
 bool TMemFI::checkPreExec(){
     if (finish || getCurFun() != function)
         return false;
- 
+
     return FaultInject::checkExec();
 
 }
@@ -1370,8 +1384,8 @@ void TMemFI::preExecute()
     logger.addInfo("Floc", csprintf("R%d", regIndex));
     logger.addInfo("P-FI", csprintf("%x", rVal));
     logger.addInfo("A-FI", csprintf("%x", fVal));
-    cprintf("TMemFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
-    
+    // cprintf("TMemFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    log_flag = true;
     finish = true;
 }
 
@@ -1380,14 +1394,30 @@ void TMemFI::postExecute()
 
     if(!checkPostExec())
         return ;
-    RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+    
+    // traceData->zdump();
+    OpClass opc = traceData->getStaticInst()->opClass();
+    if (opc == Enums::MemWrite)
+    {
+        Addr addr = traceData->getAddr();
+        uint32_t data = fiSystem->readMem(addr);
+        uint32_t fVal = ranFlip(data, 32, fcount);
+        fiSystem->writeMem(addr, fVal);
+        logger.addInfo("Addr", csprintf("%x", addr));
+        logger.addInfo("P-FI", csprintf("%x", data));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+        // cprintf("TMemFI :addr = %x , P-FI : %x , A-FI : %x \n", addr, data, fVal);
+    }else{
+        RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+        uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
+        uint32_t fVal = ranFlip(rVal, 32, fcount);
+        fiSystem->writeReg((IntRegIndex)regIndex, fVal);
+        logger.addInfo("Floc", csprintf("R%d", regIndex));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+        // cprintf("TMemFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    }
 
-    uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
-    uint32_t fVal = ranFlip(rVal, 32, fcount);
-    fiSystem->writeReg((IntRegIndex)regIndex, fVal);
-    logger.addInfo("Floc", csprintf("R%d", regIndex));
-    logger.addInfo("P-FI", csprintf("%x", rVal));
-    logger.addInfo("A-FI", csprintf("%x", fVal));
-    cprintf("TMemFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    log_flag = true;
     finish = true;
 }

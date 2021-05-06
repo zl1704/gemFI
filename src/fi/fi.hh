@@ -347,9 +347,10 @@ private:
     Trace::InstRecord *traceData;
     bool checkPostExec();
     bool checkPreExec(); 
+    uint32_t stecnt{0};
+    uint32_t ldecnt{0};
 
-
-}
+};
 
 
 /**

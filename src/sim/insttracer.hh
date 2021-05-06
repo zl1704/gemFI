@@ -222,6 +222,9 @@ class InstRecord
     void setPredicate(bool val) { predicate = val; }
 
     virtual void dump() = 0;
+    //zz
+
+    virtual void zdump(){}
 
   public:
     Tick getWhen() const { return when; }

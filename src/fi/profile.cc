@@ -15,10 +15,14 @@ void ProgramProfile::FromFile(std::string file_name,FISystem* fiSystem){
     for(Function* fun :funs){
         std::map<std::string, std::string> pkvs  = profile.getKVs(fun->getName());
         FunProfile* fp= new FunProfile;
-        fp->ld_ecnt = stoi(pkvs[LD_ECOUNT]);
-        fp->st_ecnt = stoi(pkvs[ST_ECOUNT]);
-        fp->bus_ld_ecnt = stoi(pkvs[BUS_LD_ECOUNT]);
-        fp->ecnt = stoi(pkvs[ECOUNT]);
+        to_number<uint32_t>(pkvs[LD_ECOUNT],fp->ld_ecnt);
+        to_number<uint32_t>(pkvs[ST_ECOUNT],fp->st_ecnt);
+        to_number<uint32_t>(pkvs[LD_ECOUNT],fp->bus_ld_ecnt);
+        to_number<int64_t>(pkvs[LD_ECOUNT],fp->ecnt);
+        // fp->ld_ecnt = stoi(pkvs[LD_ECOUNT]);
+        // fp->st_ecnt = stoi(pkvs[ST_ECOUNT]);
+        // fp->bus_ld_ecnt = stoi(pkvs[BUS_LD_ECOUNT]);
+        // fp->ecnt = stoi(pkvs[ECOUNT]);
         funInfos[fun->getName()] = fp;
     }
 }

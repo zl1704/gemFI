@@ -203,6 +203,43 @@ Trace::ExeTracerRecord::dump()
         traceInst(staticInst, true);
     }
 }
+/**
+ * 
+ * 'ExecEnable', 'ExecOpClass', 'ExecThread',
+    'ExecEffAddr', 'ExecResult', 'ExecSymbol', 'ExecMicro', 'ExecMacro',
+    'ExecFaulting', 'ExecUser', 'ExecKernel'
+ * 
+ * 
+ * */
+void
+Trace::ExeTracerRecord::zdump(){
+    Debug::ExecEnable.enable();
+    Debug::ExecOpClass.enable();
+    Debug::ExecThread.enable();
+    Debug::ExecEffAddr.enable();
+    Debug::ExecResult.enable();
+    Debug::ExecSymbol.enable();
+    Debug::ExecMicro.enable();
+    Debug::ExecMacro.enable();
+    Debug::ExecFaulting.enable();
+    Debug::ExecUser.enable();
+    Debug::ExecKernel.enable();
+
+    traceInst(staticInst,true);
+
+    Debug::ExecEnable.disable();
+    Debug::ExecOpClass.disable();
+    Debug::ExecThread.disable();
+    Debug::ExecEffAddr.disable();
+    Debug::ExecResult.disable();
+    Debug::ExecSymbol.disable();
+    Debug::ExecMicro.disable();
+    Debug::ExecMacro.disable();
+    Debug::ExecFaulting.disable();
+    Debug::ExecUser.disable();
+    Debug::ExecKernel.disable();
+}
+
 
 } // namespace Trace
 
