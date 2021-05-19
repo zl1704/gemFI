@@ -7,10 +7,24 @@
 #include <sstream> //使用stringstream需要引入这个头文件
 #include <fstream>
 #include <ctime>
+#include <vector>
 namespace util
 {
     using namespace std;
     uint8_t debug = 0;
+    std::vector<std::string> splitLine(const std::string &line, char delim)
+    {
+        std::stringstream ss(line);
+        std::string item;
+        std::vector<std::string> elems;
+
+        while(std::getline(ss, item, delim))
+        {
+            elems.push_back(std::move(item));
+        }
+
+        return elems;
+    }
 
     uint8_t leb128u(char *s, uint64_t &result)
     {

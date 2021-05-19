@@ -151,7 +151,7 @@ class FISystem
     friend class PFUFI;
 
     friend class CacheFI;
-
+    friend class CpuCtrFI;
 public:
     bool FIDebug;
     static FISystem *create(AtomicSimpleCPU *cpu);

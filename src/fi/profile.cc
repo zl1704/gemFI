@@ -1,6 +1,7 @@
 #include "profile.hh"
 #include "compile_info.hh"
 #include "fi_sys.hh"
+#include "util.hh"
 using namespace Profile;
 using namespace std;
 void ProgramProfile::FromFile(std::string file_name,FISystem* fiSystem){
@@ -19,10 +20,13 @@ void ProgramProfile::FromFile(std::string file_name,FISystem* fiSystem){
         to_number<uint32_t>(pkvs[ST_ECOUNT],fp->st_ecnt);
         to_number<uint32_t>(pkvs[LD_ECOUNT],fp->bus_ld_ecnt);
         to_number<int64_t>(pkvs[LD_ECOUNT],fp->ecnt);
-        // fp->ld_ecnt = stoi(pkvs[LD_ECOUNT]);
-        // fp->st_ecnt = stoi(pkvs[ST_ECOUNT]);
-        // fp->bus_ld_ecnt = stoi(pkvs[BUS_LD_ECOUNT]);
-        // fp->ecnt = stoi(pkvs[ECOUNT]);
+        vector<string> blocks = util::splitLine(pkvs[BLOCK_ADDR],' ');
+        for(string blockAddr : blocks){
+            Addr addr = 0;
+            to_number<Addr>(blockAddr,addr);
+            fp->block_head_addrs.insert(addr);
+        }
+
         funInfos[fun->getName()] = fp;
     }
 }
@@ -102,4 +106,10 @@ void ProgramProfile::AddBlockAddr(std::string fun, uint32_t addr)
         funInfos[fun] = fpf;
     }
     fpf->block_head_addrs.insert(addr);
+}
+std::unordered_set<uint32_t> ProgramProfile::GetBlockAddrs(std::string fun){
+    FunProfile* fpf = funInfos[fun];
+    if(!fpf)
+        return {};
+    return fpf->block_head_addrs;
 }

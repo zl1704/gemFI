@@ -96,15 +96,17 @@ FaultInject *FaultInject::create(IniManager *config, FISystem *fiSystem)
         fi = new BusFI(fiSystem, config);
     else if (fipos == "REG")
         fi = new RegFI(fiSystem, config);
-    else if (fipos=="MEM")
-        fi = new TMemFI(fiSystem,config);
+    else if (fipos == "MEM")
+        fi = new TMemFI(fiSystem, config);
+    else if (fipos == "CTR")
+        fi = new CpuCtrFI(fiSystem, config);
     else
         fi = new FaultInject(fiSystem, config);
 
     return fi;
 }
 
-FaultInject::FaultInject(FISystem *_fiSystem, IniManager *config) : fiSystem(_fiSystem)
+FaultInject::FaultInject(FISystem *_fiSystem, IniManager *config) : fiSystem(_fiSystem),_config(config)
 {
     random = fiType(config->getValue("GLOBAL", "fitype")) == RANDOM ? true : false;
     to_number<uint8_t>(config->getValue("GLOBAL", "fcount"), fcount);
@@ -158,7 +160,15 @@ FITYPE FaultInject::fiType(string val)
 }
 void FaultInject::ranPickFun()
 {
-    vector<Function *> funs = fiSystem->mcu->getFuns();
+    vector<Function *> allFuns = fiSystem->mcu->getFuns();
+    vector<Function *> funs;
+    for (Function *f : allFuns)
+    {
+        if (f->getName().find("main") != string::npos || f->getName().find("__") == 0)
+            continue;
+        funs.push_back(f);
+    }
+
     uint64_t index = genRan(0, funs.size() - 1);
     assert(index < funs.size());
     function = funs[index];
@@ -260,9 +270,9 @@ bool FaultInject::checkExec()
             // uint32_t rdepth = fiSystem->getRecurDepth();
             // cprintf("start: %d, end %d, cur: %d \n",r.start,r.end,fiSystem->pc.instAddr());
             // return ranTrigger(r.start, r.end, fiSystem->pc.instAddr() - 4, rdepth);
-            uint64_t total = programProfiler.GetIntData(function->getName(),Profile::ECOUNT);
+            uint64_t total = programProfiler.GetIntData(function->getName(), Profile::ECOUNT);
 
-            return ranTrigger(0,total/2,ecnt); 
+            return ranTrigger(0, total / 2, ecnt);
         }
         else
             return line == function->findLine(fiSystem->pc.instAddr());
@@ -390,7 +400,12 @@ void REGFI::execute()
         if (ri != 15)
             fiSystem->writeReg((IntRegIndex)ri, fVal);
         else
-            fiSystem->thread->pcState().set(fVal);
+        {
+            TheISA::PCState pcState = fiSystem->thread->pcState();
+            pcState.set(fVal);
+            fiSystem->thread->pcState(pcState);
+        }
+
         logger.addInfo("Floc", csprintf("R%d", ri));
         logger.addInfo("P-FI", csprintf("%x", rVal));
         logger.addInfo("A-FI", csprintf("%x", fVal));
@@ -1138,34 +1153,88 @@ void Profiler::CountInst()
         programProfiler.SetIntData(curFun, Profile::ST_ECOUNT, programProfiler.GetIntData(curFun, Profile::ST_ECOUNT) + 1);
 
     programProfiler.SetIntData(curFun, Profile::ECOUNT, programProfiler.GetIntData(curFun, Profile::ECOUNT) + 1);
-    
+
     prevReadAddr = rAddr;
 }
 
-void Profiler::RecordBlockAddr(){
-    Frame * frame = fiSystem->getFrame();
-    Function* curFun = frame->getFun();
+void Profiler::RecordBlockAddr()
+{
+    Frame *frame = fiSystem->getFrame();
+    Function *curFun = frame->getFun();
     Addr curPc = frame->getPC();
-    if(curPc == curFun->getRange().start)
-        programProfiler.AddBlockAddr(curFun->getName(),frame->getPC());
-    
-    if(traceData->getStaticInst()->isControl()){
+    if (curPc == curFun->getRange().start)
+        programProfiler.AddBlockAddr(curFun->getName(), frame->getPC());
+
+    if (traceData->getStaticInst()->isControl())
+    {
         // traceData->getStaticInst()->
-        StaticInst* inst =  traceData->getStaticInst().get();
-        if(dynamic_cast<BranchImm*>(inst)){
-            BranchImm* bImm = dynamic_cast<BranchImm*>(inst);
+        StaticInst *inst = traceData->getStaticInst().get();
+        if (dynamic_cast<BranchImm *>(inst))
+        {
+            BranchImm *bImm = dynamic_cast<BranchImm *>(inst);
             int32_t imm = bImm->getImm();
-            if(curFun->getRange().include(curPc+imm)){
-                programProfiler.AddBlockAddr(curFun->getName(),curPc+imm);
+            if (curFun->getRange().include(curPc + imm))
+            {
+                programProfiler.AddBlockAddr(curFun->getName(), curPc + imm);
             }
         }
-        
     }
+}
+uint64_t Profiler::CalcBusFISpace(){
+    const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
+    uint64_t total = 0;
+    for(auto it : funInfos){
+        uint64_t count = it.second->ld_ecnt+it.second->st_ecnt;
+        total += count*65;
+    }
+
+    return total;
+}
+uint64_t Profiler::CalcRegFISpace(){
+    const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
+    uint64_t total = 0;
+    for(auto it : funInfos){
+        
+        total += it.second->ecnt*32*15;
+    }
+    return total;
+}
+uint64_t Profiler::CalcMemFISpace(){
+    const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
+    uint64_t total = 0;
+    for(auto it : funInfos){
+        
+        total += it.second->ecnt*32*15;
+        total += it.second->ecnt*32*1024;
+    }
+    return total;
+}
+void Profiler::DumpFISpace(){
+
+    uint64_t space = 0;
+    std::string section = _config->getValue("PROFILE","section");
+    if(section=="BUS")
+        space = CalcBusFISpace();
+    else if(section == "REG")
+        space = CalcRegFISpace();
+    else if(section == "MEM")
+        space = CalcMemFISpace();
+    else
+        return;
+    std::ofstream file;
+	file.open("FISpace.dat");
+	if(file)
+	{	
+        file << to_string(space);
+		file.close();
+    }
+
 }
 
 void Profiler::Finish()
 {
     programProfiler.Dump("profile");
+    DumpFISpace();
 }
 
 // ======================Bus FI ============================
@@ -1255,7 +1324,7 @@ bool BusFI::checkExec()
         op = opc;
         st_exe_cnt++;
         int totalcnt = programProfiler.GetIntData(function->getName(), Profile::ST_ECOUNT);
-        result = ranTrigger(0, uint64_t(totalcnt*1.25), st_exe_cnt);
+        result = ranTrigger(0, uint64_t(totalcnt * 1.25), st_exe_cnt);
     }
 
     return result;
@@ -1275,30 +1344,30 @@ RegFI::RegFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, con
     logger.addInfo("Section", "Reg");
 }
 
-bool RegFI::checkPostExec(){
+bool RegFI::checkPostExec()
+{
     if (finish || getCurFun() != function)
         return false;
 
     traceData = fiSystem->getCPU()->traceData;
-    if(!traceData)
+    if (!traceData)
         return false;
     OpClass opc = traceData->getStaticInst()->opClass();
-    if((opc<Enums::IntAlu || opc >Enums::FloatMult) )
+    if ((opc < Enums::IntAlu || opc > Enums::FloatMult))
         return false;
     return FaultInject::checkExec();
 }
-bool RegFI::checkPreExec(){
+bool RegFI::checkPreExec()
+{
     if (finish || getCurFun() != function)
         return false;
-    
-    
-    return FaultInject::checkExec();
 
+    return FaultInject::checkExec();
 }
 void RegFI::preExecute()
 {
-    if(!checkPreExec())
-        return ;
+    if (!checkPreExec())
+        return;
 
     uint8_t ri = genRan(0, 3);
     IntRegIndex regIndex = (IntRegIndex)ri;
@@ -1309,7 +1378,7 @@ void RegFI::preExecute()
     logger.addInfo("P-FI", csprintf("%x", rVal));
     logger.addInfo("A-FI", csprintf("%x", fVal));
     // cprintf("RegFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
-    
+
     log_flag = true;
     finish = true;
 }
@@ -1317,8 +1386,8 @@ void RegFI::preExecute()
 void RegFI::postExecute()
 {
 
-    if(!checkPostExec())
-        return ;
+    if (!checkPostExec())
+        return;
     RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
 
     uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
@@ -1332,7 +1401,6 @@ void RegFI::postExecute()
     log_flag = true;
 }
 
-
 // ====================Mem FI=======================
 
 TMemFI::TMemFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
@@ -1341,40 +1409,42 @@ TMemFI::TMemFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, c
     logger.addInfo("Section", "TMem");
 }
 
-bool TMemFI::checkPostExec(){
+bool TMemFI::checkPostExec()
+{
     if (finish || getCurFun() != function)
         return false;
 
     traceData = fiSystem->getCPU()->traceData;
-    if(!traceData)
+    if (!traceData)
         return false;
     OpClass opc = traceData->getStaticInst()->opClass();
     // if((opc<Enums::IntAlu && opc >Enums::FloatMult) || opc == Enums::MemRead || opc == Enums::MemWrite )
-    if(opc == Enums::MemWrite ){
-        uint64_t sttotal = programProfiler.GetIntData(function->getName(),Profile::ST_ECOUNT);
-        uint64_t total = programProfiler.GetIntData(function->getName(),Profile::ECOUNT);
+    if (opc == Enums::MemWrite)
+    {
+        uint64_t sttotal = programProfiler.GetIntData(function->getName(), Profile::ST_ECOUNT);
+        uint64_t total = programProfiler.GetIntData(function->getName(), Profile::ECOUNT);
         stecnt++;
-        bool result = ranTrigger(0,total + sttotal,stecnt); 
+        bool result = ranTrigger(0, total + sttotal, stecnt);
         // return result;
-        if(result)
+        if (result)
             return true;
     }
 
-    if((opc<Enums::IntAlu || opc >Enums::FloatMult) )
-        return false;        
+    if ((opc < Enums::IntAlu || opc > Enums::FloatMult))
+        return false;
     return FaultInject::checkExec();
 }
-bool TMemFI::checkPreExec(){
+bool TMemFI::checkPreExec()
+{
     if (finish || getCurFun() != function)
         return false;
 
     return FaultInject::checkExec();
-
 }
 void TMemFI::preExecute()
 {
-    if(!checkPreExec())
-        return ;
+    if (!checkPreExec())
+        return;
 
     uint8_t ri = genRan(0, 3);
     IntRegIndex regIndex = (IntRegIndex)ri;
@@ -1392,9 +1462,9 @@ void TMemFI::preExecute()
 void TMemFI::postExecute()
 {
 
-    if(!checkPostExec())
-        return ;
-    
+    if (!checkPostExec())
+        return;
+
     // traceData->zdump();
     OpClass opc = traceData->getStaticInst()->opClass();
     if (opc == Enums::MemWrite)
@@ -1407,7 +1477,9 @@ void TMemFI::postExecute()
         logger.addInfo("P-FI", csprintf("%x", data));
         logger.addInfo("A-FI", csprintf("%x", fVal));
         // cprintf("TMemFI :addr = %x , P-FI : %x , A-FI : %x \n", addr, data, fVal);
-    }else{
+    }
+    else
+    {
         RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
         uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
         uint32_t fVal = ranFlip(rVal, 32, fcount);
@@ -1419,5 +1491,40 @@ void TMemFI::postExecute()
     }
 
     log_flag = true;
+    finish = true;
+}
+
+//================= CPU Ctr FI =================
+
+CpuCtrFI::CpuCtrFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
+{
+    InitProfile(config->getValue("GLOBAL", "profile"));
+    logger.addInfo("Section", "CpuCtr");
+}
+
+bool CpuCtrFI::checkExec()
+{
+    if (finish || getCurFun() != function)
+        return false;
+    return FaultInject::checkExec();
+}
+
+void CpuCtrFI::execute()
+{
+    if (!checkExec())
+        return;
+    Addr fVal;
+    std::unordered_set<uint32_t> bAddrs = programProfiler.GetBlockAddrs(getCurFun()->getName());
+    std::vector<Function *> funcs = fiSystem->getAllFunctions();
+    Function *fun = funcs[genRan(0, funcs.size() - 1)];
+    Range r = fun->getRange();
+    //4字节对齐
+    fVal = genRan(r.start, r.end - 4) & 0xFFFFFFFC;
+
+    // Addr pVal = fiSystem->thread->pcState().instAddr();
+    TheISA::PCState pcState = fiSystem->thread->pcState();
+    pcState.set(fVal);
+    fiSystem->thread->pcState(pcState);
+    // cprintf("Ctr FI : %s,%d, Before FI PC = 0x%x , After FI PC = 0x%x \n",getCurFun()->getName().c_str(),ecnt,pVal,fVal);
     finish = true;
 }

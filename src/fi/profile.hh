@@ -26,6 +26,7 @@ public:
 };
 class FISystem;
 class ProgramProfile{
+    friend class Profiler;
 public:
     void FromFile(std::string file_name,FISystem* fiSystem);
     void Dump(std::string file_name);
@@ -34,6 +35,8 @@ public:
     void SetStrData(std::string fun, std::string attr,std::string val);
     void SetIntData(std::string fun, std::string attr,int64_t val);
     void AddBlockAddr(std::string fun , uint32_t addr);
+    std::unordered_set<uint32_t> GetBlockAddrs(std::string fun);
+
 private:
 
     std::unordered_map<std::string,FunProfile*> funInfos;

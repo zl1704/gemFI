@@ -53,6 +53,7 @@ public:
 
 protected:
     FISystem *fiSystem;
+    IniManager* _config;
     bool finish;
     bool random;
     bool printFlag;
@@ -278,7 +279,10 @@ public:
     void Finish();
 private:
 
-    
+    uint64_t CalcBusFISpace();
+    uint64_t CalcRegFISpace();
+    uint64_t CalcMemFISpace();
+    void DumpFISpace();
     
     void CountInst();
     void RecordBlockAddr();
@@ -357,9 +361,15 @@ private:
  * CpuCtr
  * */
 
-// class CpuCtrFI : public FaultInject{
-
-// };
+class CpuCtrFI : public FaultInject{
+public:
+    virtual std::string name() { return "CtrFI"; }
+    virtual void execute();
+  
+    CpuCtrFI(FISystem *fiSystem, IniManager *config);
+private:
+    bool checkExec();
+};
 
 
 
