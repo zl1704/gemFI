@@ -98,9 +98,11 @@ private:
     std::map<Addr, Entry *> emap; //fast find
     FISystem *fiSystem;
     int64_t _capacity;
+    
     void updateCache(Addr addr, uint32_t data);
 
 public:
+    static const uint32_t CACHE_LINE = 1 << 6;
     void put(Addr addr, uint32_t data, bool is_write);
     std::pair<Addr, uint32_t> get(uint16_t index);
     void resize(int64_t capacity) { _capacity = capacity; }
@@ -174,8 +176,12 @@ public:
     uint64_t readMem(Addr addr);
     void writeReg(IntRegIndex reg, RegVal data);
     RegVal readReg(IntRegIndex reg);
-    void memBarrier(Addr addr, uint8_t *data, uint32_t size, bool is_write);
 
+    VecElem & readVecElem(const RegId &reg);
+    void setVecElem(const RegId &reg, const VecElem &val);
+
+    void memBarrier(Addr addr, uint8_t *data, uint32_t size, bool is_write);
+    uint32_t getMemUsedSize();
 
     //读写指令
     uint32_t readInst(Addr addr);

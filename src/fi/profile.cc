@@ -18,8 +18,9 @@ void ProgramProfile::FromFile(std::string file_name,FISystem* fiSystem){
         FunProfile* fp= new FunProfile;
         to_number<uint32_t>(pkvs[LD_ECOUNT],fp->ld_ecnt);
         to_number<uint32_t>(pkvs[ST_ECOUNT],fp->st_ecnt);
-        to_number<uint32_t>(pkvs[LD_ECOUNT],fp->bus_ld_ecnt);
-        to_number<int64_t>(pkvs[LD_ECOUNT],fp->ecnt);
+        to_number<uint32_t>(pkvs[BUS_LD_ECOUNT],fp->bus_ld_ecnt);
+        to_number<uint32_t>(pkvs[VCOUNT],fp->vcnt);
+        to_number<int64_t>(pkvs[ECOUNT],fp->ecnt);
         vector<string> blocks = util::splitLine(pkvs[BLOCK_ADDR],' ');
         for(string blockAddr : blocks){
             Addr addr = 0;
@@ -38,6 +39,7 @@ void ProgramProfile::Dump(std::string file_name){
         profile.addKey(funInfo.first,LD_ECOUNT,to_string(funInfo.second->ld_ecnt));
         profile.addKey(funInfo.first,ST_ECOUNT,to_string(funInfo.second->st_ecnt));
         profile.addKey(funInfo.first,BUS_LD_ECOUNT,to_string(funInfo.second->bus_ld_ecnt));
+        profile.addKey(funInfo.first,VCOUNT,to_string(funInfo.second->vcnt));
         profile.addKey(funInfo.first,ECOUNT,to_string(funInfo.second->ecnt));
         std::string blocks = "";
         for(auto addr : funInfo.second->block_head_addrs){
@@ -66,6 +68,8 @@ int64_t ProgramProfile::GetIntData(std::string fun, std::string attr){
         return fpf->st_ecnt;
     else if(attr == BUS_LD_ECOUNT)
         return fpf->bus_ld_ecnt;
+    else if(attr == VCOUNT)
+        return fpf->vcnt;
     else if(attr == ECOUNT)
         return fpf->ecnt;
  
@@ -85,6 +89,8 @@ void ProgramProfile::SetIntData(std::string fun, std::string attr,int64_t val){
         fpf->st_ecnt = val;
     else if(attr == BUS_LD_ECOUNT)
         fpf->bus_ld_ecnt = val;
+    else if(attr == VCOUNT)
+        fpf->vcnt = val;
     else if(attr == ECOUNT)
         fpf->ecnt = val;
 }

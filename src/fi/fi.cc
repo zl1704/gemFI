@@ -436,7 +436,7 @@ void REGFI::execute()
 
 MemFI::MemFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
-    fiSystem->memRecords.resize(-1);
+    fiSystem->memRecords.resize(128);
     logger.addInfo("Section", "Mem");
 }
 
@@ -444,16 +444,16 @@ void MemFI::execute()
 {
     if (!checkExec())
         return;
-    uint8_t ran = genRan(0, fiSystem->memRecords.size() - 1);
+    uint32_t ran = genRan(0, fiSystem->memRecords.size() - 1);
     // fiSystem->memCache.dump();
     // fiSystem->memRecords.dump();
     std::pair<Addr, uint32_t> datap = fiSystem->memRecords.get(ran);
 
-    std::vector<InjectEntry> injects = MBU::genEntries(datap.first, fcount, 4);
+    std::vector<InjectEntry> injects = MBU::genEntries(datap.first, fcount, 64);
 
     for (InjectEntry e : injects)
     {
-        uint32_t addr = e._addr;
+        uint32_t addr = e._addr + genRan(0,16)*4;
         uint32_t data = fiSystem->readMem(addr);
         uint32_t fVal = mflip(data, e.fids);
         fiSystem->writeMem(addr, fVal);
@@ -998,8 +998,8 @@ void PFUFI::execute()
 CacheFI::CacheFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
 
-    fiSystem->memRecords.resize(256);
-
+    fiSystem->memRecords.resize(64);
+    InitProfile(config->getValue("GLOBAL", "profile"));
     logger.addInfo("Section", "Cache");
 }
 
@@ -1013,8 +1013,10 @@ void CacheFI::execute()
     // fiSystem->memCache.dump();
     // fiSystem->memRecords.dump();
     std::pair<Addr, uint32_t> datap = fiSystem->memRecords.get(ran);
-    if (!datap.second)
-        datap.second = fiSystem->readMem(datap.first);
+    // if (!datap.second)
+    int es = LRUCache::CACHE_LINE/4;
+    int offset = genRan(0,es-1);
+    datap.second = fiSystem->readMem(datap.first+offset*4);
     // std::vector<InjectEntry> injects = MBU::genEntries(datap.first, fcount, 8);
 
     // for (InjectEntry e : injects)
@@ -1123,6 +1125,7 @@ std::vector<InjectEntry> MBU::genL(uint32_t addr, uint8_t count, uint32_t align)
 // ====================== Profile ==========================
 Profiler::Profiler(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
+    outs.clear();
 }
 void Profiler::postExecute()
 {
@@ -1137,6 +1140,8 @@ void Profiler::postExecute()
     curFun = getCurFun()->getName();
     CountInst();
     RecordBlockAddr();
+    maxMemUsed = max(maxMemUsed,fiSystem->getMemUsedSize());
+    outs << traceData->zdump();
 }
 void Profiler::CountInst()
 {
@@ -1151,6 +1156,8 @@ void Profiler::CountInst()
     }
     else if (opc == Enums::MemWrite)
         programProfiler.SetIntData(curFun, Profile::ST_ECOUNT, programProfiler.GetIntData(curFun, Profile::ST_ECOUNT) + 1);
+    else if(opc >= Enums::SimdAdd && opc <=Enums::SimdFloatMult)
+        programProfiler.SetIntData(curFun, Profile::VCOUNT, programProfiler.GetIntData(curFun, Profile::VCOUNT) + 1);
 
     programProfiler.SetIntData(curFun, Profile::ECOUNT, programProfiler.GetIntData(curFun, Profile::ECOUNT) + 1);
 
@@ -1180,38 +1187,58 @@ void Profiler::RecordBlockAddr()
         }
     }
 }
-uint64_t Profiler::CalcBusFISpace(){
+std::pair<uint64_t,uint64_t>  Profiler::CalcBusFISpace(){
     const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
     uint64_t total = 0;
+    
     for(auto it : funInfos){
         uint64_t count = it.second->ld_ecnt+it.second->st_ecnt;
-        total += count*65;
+        total += count;
     }
 
-    return total;
+    return {total*65,total*65};
 }
-uint64_t Profiler::CalcRegFISpace(){
+std::pair<uint64_t,uint64_t>  Profiler::CalcRegFISpace(){
+    const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
+    uint64_t total = 0;
+    //[R0-R14]
+    for(auto it : funInfos){
+        
+        total += it.second->ecnt;
+    }
+    return {total*32*15,total*32*15};
+}
+std::pair<uint64_t,uint64_t>  Profiler::CalcMemFISpace(){
+    const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
+    uint64_t total = 0;
+    for(auto it : funInfos){          
+        total += it.second->ecnt;
+    }
+    return {total*32*maxMemUsed,total*32*maxMemUsed};
+}
+std::pair<uint64_t,uint64_t>  Profiler::CalcCPUFISpace(){
+    const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
+    uint64_t total = 0;
+   
+    for(auto it : funInfos){
+        //R0-R15 ,CPSR          [指令译码器]
+        total += it.second->ecnt;
+    }
+    return {total*32*18,total*32*19};
+}
+std::pair<uint64_t,uint64_t>  Profiler::CalcIOFISpace(){
     const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
     uint64_t total = 0;
     for(auto it : funInfos){
         
-        total += it.second->ecnt*32*15;
+        total += it.second->ecnt;
     }
-    return total;
+    return {total*154,total*160};
 }
-uint64_t Profiler::CalcMemFISpace(){
-    const std::unordered_map<std::string,FunProfile*> &funInfos = programProfiler.funInfos;
-    uint64_t total = 0;
-    for(auto it : funInfos){
-        
-        total += it.second->ecnt*32*15;
-        total += it.second->ecnt*32*1024;
-    }
-    return total;
-}
+
 void Profiler::DumpFISpace(){
 
-    uint64_t space = 0;
+    std::pair<uint64_t,uint64_t>  space = {0,0};
     std::string section = _config->getValue("PROFILE","section");
     if(section=="BUS")
         space = CalcBusFISpace();
@@ -1219,16 +1246,28 @@ void Profiler::DumpFISpace(){
         space = CalcRegFISpace();
     else if(section == "MEM")
         space = CalcMemFISpace();
+    else if(section =="CPU")
+        space = CalcCPUFISpace();
+    else if(section == "IO")
+        space = CalcIOFISpace();
     else
         return;
     std::ofstream file;
 	file.open("FISpace.dat");
 	if(file)
 	{	
-        file << to_string(space);
+        file << to_string(space.first)<<std::endl;
+        file << to_string(space.second);
 		file.close();
     }
-
+    
+	file.open("spacedump");
+	if(file)
+	{	
+        file << outs.str();
+		file.close();
+    }
+    
 }
 
 void Profiler::Finish()
@@ -1324,7 +1363,7 @@ bool BusFI::checkExec()
         op = opc;
         st_exe_cnt++;
         int totalcnt = programProfiler.GetIntData(function->getName(), Profile::ST_ECOUNT);
-        result = ranTrigger(0, uint64_t(totalcnt * 1.25), st_exe_cnt);
+        result = ranTrigger(0, uint64_t(totalcnt )*1.5, ld_exe_cnt);
     }
 
     return result;
@@ -1340,6 +1379,12 @@ void BusFI::Finish()
 
 RegFI::RegFI(FISystem *fiSystem, IniManager *config) : FaultInject(fiSystem, config)
 {
+    fiRegTy = 1;
+    vcnt = 0;
+    string ty = config->getValue("REG","Type");
+    if(ty!=""){
+        fiRegTy = strToNum<int>(ty);
+    }
     InitProfile(config->getValue("GLOBAL", "profile"));
     logger.addInfo("Section", "Reg");
 }
@@ -1362,23 +1407,56 @@ bool RegFI::checkPreExec()
     if (finish || getCurFun() != function)
         return false;
 
-    return FaultInject::checkExec();
+    bool result = false;
+    OpClass opc = fiSystem->getCPU()->curStaticInst->opClass();
+    if(opc >= Enums::SimdAdd && opc <=Enums::SimdFloatMult){
+        vcnt++;
+
+        int totalcnt = programProfiler.GetIntData(function->getName(),Profile::VCOUNT);
+        result = ranTrigger(0, totalcnt / 2, vcnt);
+    }else{
+        ecnt++;
+        int totalcnt = programProfiler.GetIntData(function->getName(),Profile::ECOUNT);
+        result = ranTrigger(0, totalcnt / 2, ecnt);
+    }
+
+    return result;
+    // return FaultInject::checkExec();
 }
+
+
+
 void RegFI::preExecute()
 {
+
+    
     if (!checkPreExec())
         return;
 
-    uint8_t ri = genRan(0, 3);
-    IntRegIndex regIndex = (IntRegIndex)ri;
-    uint32_t rVal = fiSystem->readReg(regIndex);
-    uint32_t fVal = ranFlip(rVal, 32, fcount);
-    fiSystem->writeReg((IntRegIndex)regIndex, fVal);
-    logger.addInfo("Floc", csprintf("R%d", regIndex));
-    logger.addInfo("P-FI", csprintf("%x", rVal));
-    logger.addInfo("A-FI", csprintf("%x", fVal));
-    // cprintf("RegFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
 
+    OpClass opc = fiSystem->getCPU()->curStaticInst->opClass();
+    if(opc >= Enums::SimdAdd && opc <=Enums::SimdFloatMult){
+        RegIndex index = genRan(8,10);
+        RegId regId(VecElemClass,index,0);
+        VecElem rVal = fiSystem->readVecElem(regId);
+        VecElem fVal = ranFlip(rVal,32,fcount);
+        fiSystem->setVecElem(regId,fVal);
+        logger.addInfo("Floc", csprintf("R%d", index));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+
+    }else{
+        uint8_t ri = genRan(0, 3);
+        IntRegIndex regIndex = (IntRegIndex)ri;
+        uint32_t rVal = fiSystem->readReg(regIndex);
+        uint32_t fVal = ranFlip(rVal, 32, fcount);
+        fiSystem->writeReg((IntRegIndex)regIndex, fVal);
+        logger.addInfo("Floc", csprintf("R%d", regIndex));
+        logger.addInfo("P-FI", csprintf("%x", rVal));
+        logger.addInfo("A-FI", csprintf("%x", fVal));
+        //cprintf("RegFI Pre Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+       
+    }
     log_flag = true;
     finish = true;
 }
@@ -1386,19 +1464,19 @@ void RegFI::preExecute()
 void RegFI::postExecute()
 {
 
-    if (!checkPostExec())
-        return;
-    RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
+    // if (!checkPostExec())
+    //     return;
+    // RegIndex regIndex = traceData->getStaticInst()->destRegIdx(0).index();
 
-    uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
-    uint32_t fVal = ranFlip(rVal, 32, fcount);
-    fiSystem->writeReg((IntRegIndex)regIndex, fVal);
-    logger.addInfo("Floc", csprintf("R%d", regIndex));
-    logger.addInfo("P-FI", csprintf("%x", rVal));
-    logger.addInfo("A-FI", csprintf("%x", fVal));
-    // cprintf("RegFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
-    finish = true;
-    log_flag = true;
+    // uint32_t rVal = fiSystem->readReg((IntRegIndex)regIndex);
+    // uint32_t fVal = ranFlip(rVal, 32, fcount);
+    // fiSystem->writeReg((IntRegIndex)regIndex, fVal);
+    // logger.addInfo("Floc", csprintf("R%d", regIndex));
+    // logger.addInfo("P-FI", csprintf("%x", rVal));
+    // logger.addInfo("A-FI", csprintf("%x", fVal));
+    // // cprintf("RegFI Post Exec : reg = %d , P-FI : %d , A-FI : %d \n", regIndex, rVal, fVal);
+    // finish = true;
+    // log_flag = true;
 }
 
 // ====================Mem FI=======================

@@ -203,6 +203,51 @@ Trace::ExeTracerRecord::dump()
         traceInst(staticInst, true);
     }
 }
+
+std::string Trace::ExeTracerRecord::ztraceInst(const StaticInstPtr &inst){
+    std::stringstream outs;
+    ccprintf(outs, "%7d: ", when);
+
+    
+    outs << "T" << thread->threadId() << " : ";
+
+    std::string sym_str;
+    Addr sym_addr;
+    Addr cur_pc = pc.instAddr();
+    if (debugSymbolTable && Debug::ExecSymbol &&
+            (!FullSystem || !inUserMode(thread)) &&
+            debugSymbolTable->findNearestSymbol(cur_pc, sym_str, sym_addr)) {
+        if (cur_pc != sym_addr)
+            sym_str += csprintf("+%d",cur_pc - sym_addr);
+        outs << "@" << sym_str;
+    } else {
+        outs << "0x" << hex << cur_pc;
+    }
+
+    if (inst->isMicroop()) {
+        outs << "." << setw(2) << dec << pc.microPC();
+    } else {
+        outs << "   ";
+    }
+
+    outs << " : ";
+
+    //
+    //  Print decoded instruction
+    //
+
+    outs << setw(26) << left;
+    outs << inst->disassemble(cur_pc, debugSymbolTable); 
+
+    //
+    //  End of line...
+    //
+    outs << endl;
+    return outs.str();
+
+}
+
+
 /**
  * 
  * 'ExecEnable', 'ExecOpClass', 'ExecThread',
@@ -211,7 +256,7 @@ Trace::ExeTracerRecord::dump()
  * 
  * 
  * */
-void
+std::string
 Trace::ExeTracerRecord::zdump(){
     Debug::ExecEnable.enable();
     Debug::ExecOpClass.enable();
@@ -225,7 +270,7 @@ Trace::ExeTracerRecord::zdump(){
     Debug::ExecUser.enable();
     Debug::ExecKernel.enable();
 
-    traceInst(staticInst,true);
+    std::string res = ztraceInst(staticInst);
 
     Debug::ExecEnable.disable();
     Debug::ExecOpClass.disable();
@@ -238,6 +283,7 @@ Trace::ExeTracerRecord::zdump(){
     Debug::ExecFaulting.disable();
     Debug::ExecUser.disable();
     Debug::ExecKernel.disable();
+    return res;
 }
 
 

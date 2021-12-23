@@ -279,9 +279,11 @@ public:
     void Finish();
 private:
 
-    uint64_t CalcBusFISpace();
-    uint64_t CalcRegFISpace();
-    uint64_t CalcMemFISpace();
+    std::pair<uint64_t,uint64_t>  CalcBusFISpace();
+    std::pair<uint64_t,uint64_t>  CalcRegFISpace();
+    std::pair<uint64_t,uint64_t>  CalcMemFISpace();
+    std::pair<uint64_t,uint64_t>  CalcCPUFISpace();
+    std::pair<uint64_t,uint64_t>  CalcIOFISpace();
     void DumpFISpace();
     
     void CountInst();
@@ -291,9 +293,15 @@ private:
     ArmISA::MachInst inst;
     ArmISA::MachInst preInst;
     std::string curFun;
-    
-    
+    std::stringstream outs;
+    uint32_t maxMemUsed {0};
 };
+//
+
+
+
+
+
 
 //===================TEST========================
 
@@ -328,6 +336,8 @@ public:
     RegFI(FISystem *fiSystem, IniManager *config);
 
 private:
+    int vcnt;
+    int fiRegTy;
     Trace::InstRecord *traceData;
     bool checkPostExec();
     bool checkPreExec();

@@ -224,7 +224,7 @@ class InstRecord
     virtual void dump() = 0;
     //zz
 
-    virtual void zdump(){}
+    virtual std::string zdump(){ return "";}
 
   public:
     Tick getWhen() const { return when; }

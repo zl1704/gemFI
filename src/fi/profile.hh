@@ -9,6 +9,7 @@ namespace Profile{
     static  std::string ECOUNT = "ECount";
     static  std::string LD_ECOUNT = "LDECount";
     static  std::string ST_ECOUNT = "STECount";
+    static  std::string VCOUNT = "VCOUNT";
     static  std::string BUS_LD_ECOUNT = "BusLDECount";
     static  std::string BLOCK_ADDR = "BlockAddr";
 
@@ -20,6 +21,7 @@ public:
     uint32_t ld_ecnt{0};
     uint32_t st_ecnt{0};    
     uint32_t bus_ld_ecnt{0};
+    uint32_t vcnt{0};
     std::unordered_set<uint32_t> block_head_addrs;
     
     

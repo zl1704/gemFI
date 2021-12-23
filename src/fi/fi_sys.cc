@@ -160,7 +160,7 @@ void LRUCache::updateCache(Addr addr, uint32_t data)
 
     Entry *p;
     // 每一次miss 从内存中预读8*4B数据
-    while (size() >= (_capacity - 8))
+    while (size() >= (_capacity - 1))
     {
         p = rList.head->next;
         emap.erase(p->addr);
@@ -168,36 +168,37 @@ void LRUCache::updateCache(Addr addr, uint32_t data)
         delete p;
     }
     Addr paddr = addr & (~31);
-    bool need_insert = true;
+    // bool need_insert = true;
     int i = 0;
     Entry *e;
-    while (i < 7)
+    while (i < 1)
     {
         // uint32_t pd = fiSystem->readMem(paddr);
         //这里不能去读，递归了，暂时设为0
         // cprintf("FISystem LRUCache insert info:  entry  Addr = 0x%x,  Data = 0x%x ,Size = %d\n", paddr, data, emap.size());
-        if (emap.find(paddr) != emap.end())
+        if (emap.find(paddr) == emap.end())
         {
             e = new Entry(paddr, 0, 0);
             emap.insert(pair<Addr, Entry *>(paddr, e));
             rList.append(e);
         }
-        if (paddr == addr)
-            need_insert = false;
+        // if (paddr == addr)
+        //     need_insert = false;
         i++;
         paddr += 4;
     }
-    if (need_insert)
-    {
-        e = new Entry(addr, data, 0);
-        emap.insert(pair<Addr, Entry *>(paddr, e));
-        rList.append(e);
-    }
+    // if (need_insert)
+    // {
+    //     e = new Entry(addr, data, 0);
+    //     emap.insert(pair<Addr, Entry *>(paddr, e));
+    //     rList.append(e);
+    // }
 }
 
 void LRUCache::put(Addr addr, uint32_t data, bool is_write)
 {
-    map<Addr, Entry *>::iterator re = emap.find(addr);
+    Addr alignAddr = addr & (~(CACHE_LINE-1));
+    map<Addr, Entry *>::iterator re = emap.find(alignAddr);
     Entry *entry = nullptr;
     // cprintf("FISystem LRUCache info: %s entry  Addr = 0x%x,  Data = 0x%x ,Size = %d\n", is_write ? "Write" : "Read", addr, data, emap.size());
 
@@ -213,12 +214,12 @@ void LRUCache::put(Addr addr, uint32_t data, bool is_write)
             // rList.remove(rList.head->next);
             // emap.erase(e->addr);
             // delete e;
-            updateCache(addr, data);
+            updateCache(alignAddr, data);
         }
         else
         {
-            entry = new Entry(addr, data, 0);
-            emap.insert(pair<Addr, Entry *>(addr, entry));
+            entry = new Entry(alignAddr, data, 0);
+            emap.insert(pair<Addr, Entry *>(alignAddr, entry));
             rList.append(entry);
         }
     }
@@ -254,7 +255,7 @@ void LRUCache::dump()
     while (p != head)
     {
 
-        cprintf("\t Addr: %10x , Data: %10x \n", p->addr, p->data);
+        cprintf("\t Addr: %10x \n", p->addr);
         p = p->next;
     }
 }
@@ -270,6 +271,10 @@ void FISystem::memBarrier(Addr addr, uint8_t *data, uint32_t size, bool is_write
     // memCache.put(addr, c_data, is_write);
     memRecords.put(addr, c_data, is_write);
 }
+uint32_t FISystem::getMemUsedSize(){
+    return pTable->pTable.size()*pTable->pageSize;
+}
+
 
 void Frame::print()
 {
@@ -352,7 +357,8 @@ bool FISystem::initFI()
         }
 
         // util::debug = true;
-        // mcu->print();
+        if(util::debug>=10)
+            mcu->print();
         FI = FaultInject::create(config, this);
         FI->dump();
     }
@@ -638,8 +644,19 @@ RegVal FISystem::readReg(IntRegIndex reg)
     return thread->readIntReg(reg);
 }
 
+VecElem & FISystem::readVecElem(const RegId &reg){
+    return const_cast<VecElem&>(thread->readVecElem(reg));
+}
+void FISystem::setVecElem(const RegId &reg, const VecElem &val){
+
+    thread->setVecElem(reg,val);
+}
+
+
 void FISystem::close()
 {
+    if(!enable)
+        return ;
     FI->Finish();
     DPRINTF(FISYS, "FISystem::close\n");
     // pcInfo.dump();

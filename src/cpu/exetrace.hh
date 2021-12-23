@@ -56,8 +56,9 @@ class ExeTracerRecord : public InstRecord
 
     void traceInst(const StaticInstPtr &inst, bool ran);
 
+    std::string ztraceInst(const StaticInstPtr &inst);
     void dump();
-    void zdump();
+    std::string zdump();
 };
 
 class ExeTracer : public InstTracer
